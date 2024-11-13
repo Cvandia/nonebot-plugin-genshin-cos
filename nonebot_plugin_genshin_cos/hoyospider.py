@@ -37,7 +37,7 @@ class HoyoBasicSpider:
     def sync_get_urls(self, page_size: int) -> str:
         """
         同步获取urls
-        
+
         参数:
             - page_size: 每页数量
         返回:
@@ -48,7 +48,7 @@ class HoyoBasicSpider:
     def sync_get_name(self, page_size: int) -> str:
         """
         同步获取names
-        
+
         参数:
             - page_size: 每页数量
         返回:
@@ -59,7 +59,7 @@ class HoyoBasicSpider:
     def sync_get(self, params: dict = {}, is_good: bool = False):
         """
         同步获取
-        
+
         参数:
             - params: 参数
             - is_good: 是否精品
@@ -73,7 +73,7 @@ class HoyoBasicSpider:
     def sync_name(self, params: dict = {}, is_good: bool = False):
         """
         同步获取
-        
+
         参数:
             - params: 参数
             - is_good: 是否精品
@@ -87,7 +87,7 @@ class HoyoBasicSpider:
     async def async_get_urls(self, page_size: int = 20) -> list:
         """
         异步获取urls
-        
+
         参数:
             - page_size: 每页数量
         返回:
@@ -98,7 +98,7 @@ class HoyoBasicSpider:
     async def async_get_name(self, page_size: int = 20) -> list:
         """
         异步获取names
-        
+
         参数:
             - page_size: 每页数量
         返回:
@@ -109,7 +109,7 @@ class HoyoBasicSpider:
     async def async_get(self, params: dict = {}, is_good: bool = False):
         """
         异步获取
-        
+
         参数:
             - params: 参数
             - is_good: 是否精品
@@ -125,7 +125,7 @@ class HoyoBasicSpider:
     async def async_name(self, params: dict = {}, is_good: bool = False):
         """
         异步获取
-        
+
         参数:
             - params: 参数
             - is_good: 是否精品
@@ -140,7 +140,7 @@ class HoyoBasicSpider:
     def handle_response(self, response: Response, is_good: bool = False) -> list:
         """
         处理响应
-        
+
         参数:
             - response: 响应
             - is_good: 是否精品
@@ -162,7 +162,7 @@ class HoyoBasicSpider:
     def get_rsp_name(self, response: Response, is_good: bool = False) -> list:
         """
         获取响应的帖子名称
-        
+
         参数:
             - response: 响应
             - is_good: 是否精品
