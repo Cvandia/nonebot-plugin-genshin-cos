@@ -1,6 +1,11 @@
-from nonebot import logger
-import contextlib
+from nonebot import logger, require
+
+require("nonebot_plugin_apscheduler")
+
 from . import matcher
+
+import contextlib
+
 
 with contextlib.suppress(Exception):
     from nonebot.plugin import PluginMetadata

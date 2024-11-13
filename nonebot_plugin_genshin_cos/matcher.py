@@ -3,13 +3,11 @@ from random import choice
 from nonebot import get_bot, get_driver
 from nonebot.adapters.onebot.v11 import GroupMessageEvent, MessageEvent, MessageSegment
 from nonebot.params import ArgPlainText, CommandArg, RegexGroup
-from nonebot.plugin import on_command, on_regex, require
+from nonebot.plugin import on_command, on_regex
 from nonebot.rule import to_me
 
 from .hoyospider import *
 from .utils import *
-
-require("nonebot_plugin_apscheduler")
 
 try:
     import ujson as json
@@ -22,25 +20,22 @@ import re
 
 from nonebot_plugin_apscheduler import scheduler
 
-# 用户cd数据
-user_data = {}
-CONFIG: dict[str, dict[str, str]] = {
+g_config: dict[str, dict[str, str]] = {
     "原神": {},
     "崩坏3": {},
     "大别野": {},
     "星穹铁道": {},
-}
-DRIVER = get_driver()
+}  # 全局配置
 
 # 读取配置文件
 config_path = Path("config/genshincos.json")
 config_path.parent.mkdir(parents=True, exist_ok=True)
 if config_path.exists():
     with open(config_path, "r", encoding="utf8") as f:
-        CONFIG = json.load(f)
+        g_config = json.load(f)
 else:
     with open(config_path, "w", encoding="utf8") as f:
-        json.dump(CONFIG, f, ensure_ascii=False, indent=4)
+        json.dump(g_config, f, ensure_ascii=False, indent=4)
 
 # 事件响应器
 download_cos = on_command(
@@ -213,7 +208,7 @@ async def _(
 @show_aps.handle()
 async def _(bot: Bot, event: GroupMessageEvent):
     send_msg = "本群订阅的推送有:\n"
-    for game_type, dict in CONFIG.items():
+    for game_type, dict in g_config.items():
         if game_type:
             for group_id, time in dict.items():
                 if str(event.group_id) == group_id:
@@ -234,10 +229,10 @@ async def _(event: GroupMessageEvent, args: tuple[str, ...] = RegexGroup()):
     if mode == "开启":
         if not time:
             await turn_aps.finish("请指定推送时间")
-        if aps_group_id in CONFIG.get(game_type, {}):
+        if aps_group_id in g_config.get(game_type, {}):
             await turn_aps.finish("该群已开启,无需重复开启")
 
-        CONFIG.setdefault(game_type, {})[aps_group_id] = time
+        g_config.setdefault(game_type, {})[aps_group_id] = time
         try:
             scheduler.add_job(
                 aps_send,
@@ -251,17 +246,17 @@ async def _(event: GroupMessageEvent, args: tuple[str, ...] = RegexGroup()):
         except Exception as e:
             logger.error(e)
     else:
-        if aps_group_id not in CONFIG.get(game_type, {}):
+        if aps_group_id not in g_config.get(game_type, {}):
             await turn_aps.finish("该群已关闭,无需重复关闭")
 
-        CONFIG[game_type].pop(aps_group_id, None)
+        g_config[game_type].pop(aps_group_id, None)
         try:
             scheduler.remove_job(f"{game_type}{aps_group_id}")
         except Exception as e:
             logger.error(e)
 
     with open(config_path, "w", encoding="utf8") as f:
-        json.dump(CONFIG, f, ensure_ascii=False, indent=4)
+        json.dump(g_config, f, ensure_ascii=False, indent=4)
 
     await turn_aps.finish(f"已成功{mode}{aps_group_id}的{game_type}定时推送")
 
@@ -301,7 +296,7 @@ async def got_type(game_type: str = ArgPlainText()):
 async def aps_send(aps_goup_id: str):
     logger.debug("正在发送定时推送")
     bot: Bot = get_bot()  # type:ignore
-    for game_type, dict in CONFIG.items():
+    for game_type, dict in g_config.items():
         if not game_type:
             continue
         for saved_group_id, time in dict.items():
@@ -338,6 +333,9 @@ async def aps_send(aps_goup_id: str):
                 logger.error(e)
 
 
+g_user_data = {}  # 用户cd数据
+
+
 async def send_images(
     bot: Bot,
     matcher: Matcher,
@@ -355,8 +353,8 @@ async def send_images(
         event: 消息事件类型
         send_type: 爬虫类型
     """
-    global user_data
-    out_cd, deletime, user_data = check_cd(event.user_id, user_data)
+    global g_user_data
+    out_cd, deletime, g_user_data = check_cd(event.user_id, g_user_data)
     if not out_cd:
         await matcher.finish(f"cd冷却中,还剩{deletime}秒", at_sender=True)
         return
@@ -395,14 +393,17 @@ async def send_images(
         await matcher.finish("账户风控了,发送不了图片", at_sender=True)
 
 
-@DRIVER.on_startup
+g_driver = get_driver()  # 全局driver
+
+
+@g_driver.on_startup
 async def start_aps():
     try:
         if scheduler == None:
             logger.error("未安装apscheduler插件,无法使用此功能")
         with open(config_path, "r", encoding="utf8") as f:
-            CONFIG: dict[str, dict[str, str]] = json.load(f)
-        for game_type, _dict in CONFIG.items():
+            g_config: dict[str, dict[str, str]] = json.load(f)
+        for game_type, _dict in g_config.items():
             if game_type == "":
                 continue
             for aps_group_id, time in _dict.items():
