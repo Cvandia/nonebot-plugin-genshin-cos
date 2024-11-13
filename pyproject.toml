@@ -11,7 +11,7 @@ build-backend = "pdm.backend"
 
 [project]
 name = "nonebot-plugin-genshin-cos"
-version = "0.3.3"
+version = "0.3.4"
 description = "米游社原神cos图获取"
 authors = [
     {name = "Cvandia",email = "106718176+Cvandia@users.noreply.github.com"},

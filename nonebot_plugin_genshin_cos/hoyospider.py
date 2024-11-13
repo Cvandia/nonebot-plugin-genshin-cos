@@ -257,7 +257,7 @@ class Rank(HoyoBasicSpider):
 
     def __init__(self, forum_id: ForumType, type: RankType) -> None:
         super().__init__()
-        self.api = self.base_url + "getImagePostlist"
+        self.api = self.base_url + "getImagePostList"
         self.forum_id = forum_id.value
         gametype = get_gids(forum_id.name)
         self.gids = gametype.value
@@ -298,7 +298,7 @@ class Hot(HoyoBasicSpider):
 
     def __init__(self, forum_id: ForumType) -> None:
         super().__init__()
-        self.api = self.base_url + "getForumPostlist"
+        self.api = self.base_url + "getForumPostList"
         self.forum_id = forum_id.value
         gametype = get_gids(forum_id.name)
         self.gids = gametype.value
@@ -338,7 +338,7 @@ class Good(HoyoBasicSpider):
 
     def __init__(self, forum_id: ForumType) -> None:
         super().__init__()
-        self.api = self.base_url + "forumGoodPostFulllist"
+        self.api = self.base_url + "forumGoodPostFullList"
         self.forum_id = forum_id.value
         gametype = get_gids(forum_id.name)
         self.gids = gametype.value
@@ -373,7 +373,7 @@ class Latest(HoyoBasicSpider):
 
     def __init__(self, forum_id: ForumType, type: LatestType) -> None:
         super().__init__()
-        self.api = self.base_url + "getForumPostlist"
+        self.api = self.base_url + "getForumPostList"
         self.forum_id = forum_id.value
         gametype = get_gids(forum_id.name)
         self.gids = gametype.value
