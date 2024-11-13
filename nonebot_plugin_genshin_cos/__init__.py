@@ -9,10 +9,8 @@ from nonebot.rule import to_me
 from .hoyospider import *
 from .utils import *
 
-try:
-    scheduler = require("nonebot_plugin_apscheduler").scheduler
-except:
-    scheduler = None
+require("nonebot_plugin_apscheduler")
+
 try:
     import ujson as json
 except ModuleNotFoundError:
