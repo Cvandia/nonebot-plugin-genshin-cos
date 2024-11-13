@@ -1,7 +1,6 @@
 from asyncio import sleep
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 import httpx
 from httpx import TimeoutException
@@ -59,7 +58,7 @@ DELAY = config.cos_delay
 IS_FORWARD = config.cos_forward_msg
 
 
-def check_cd(user_id: int, user_data: Dict[str, datetime]) -> Tuple[bool, int, dict]:
+def check_cd(user_id: int, user_data: dict[str, datetime]) -> tuple[bool, int, dict]:
     """检查用户触发事件的cd
 
     Args:
@@ -80,7 +79,7 @@ def check_cd(user_id: int, user_data: Dict[str, datetime]) -> Tuple[bool, int, d
         return True, 0, data
 
 
-async def download_from_urls(urls: List[str], path: Path):
+async def download_from_urls(urls: list[str], path: Path):
     """
     下载图片
     :param urls: 图片链接
