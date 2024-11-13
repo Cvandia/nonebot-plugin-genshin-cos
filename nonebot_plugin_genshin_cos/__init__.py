@@ -1,5 +1,6 @@
 from nonebot import logger
 import contextlib
+from . import matcher
 
 with contextlib.suppress(Exception):
     from nonebot.plugin import PluginMetadata
