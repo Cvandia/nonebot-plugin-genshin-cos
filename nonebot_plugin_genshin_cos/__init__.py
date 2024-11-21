@@ -15,7 +15,7 @@ with contextlib.suppress(Exception):
         description="获取原神coser图片",
         usage="原神cos,CosPlus,下载cos",
         type="application",
-        homepage="https://github.com/Cvandia/nonebot_plugin-genshin-cos",
+        homepage="https://github.com/Cvandia/nonebot-plugin-genshin-cos",
         supported_adapters={"~onebot.v11"},
         extra={
             "unique_name": "genshin_cos",
