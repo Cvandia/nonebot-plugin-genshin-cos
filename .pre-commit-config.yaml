@@ -1,12 +1,31 @@
 repos:
-  - repo: https://github.com/hadialqattan/pycln
-    rev: v2.4.0
-    hooks:
-      - id: pycln
-        args: [--config, pyproject.toml]
+- repo: https://github.com/hadialqattan/pycln
+  rev: v2.4.0
+  hooks:
+    - id: pycln
+      args: [--config, pyproject.toml]
 
-  - repo: https://github.com/psf/black
-    rev: 24.3.0
-    hooks:
-      - id: black
-        stages: [pre-commit]
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v5.0.0
+  hooks:
+    # 检查大文件
+    - id: check-added-large-files
+    # 检查文件编码
+    - id: end-of-file-fixer
+
+- repo: https://github.com/psf/black
+  rev: 24.3.0
+  hooks:
+    - id: black
+      stages: [pre-commit]
+
+# ruff check
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  # Ruff version.
+  rev: v0.8.1
+  hooks:
+    # Run the linter.
+    - id: ruff
+      args: [--fix]
+    # Run the formatter.
+    - id: ruff-format

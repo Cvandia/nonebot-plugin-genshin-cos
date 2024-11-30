@@ -1,14 +1,3 @@
-from random import choice
-
-from nonebot import get_bot, get_driver
-from nonebot.adapters.onebot.v11 import GroupMessageEvent, MessageEvent, MessageSegment
-from nonebot.params import ArgPlainText, CommandArg, RegexGroup
-from nonebot.plugin import on_command, on_regex
-from nonebot.rule import to_me
-
-from .hoyospider import *
-from .utils import *
-
 try:
     import ujson as json
 except ModuleNotFoundError:
@@ -17,6 +6,67 @@ except ModuleNotFoundError:
 import asyncio
 import random
 import re
+
+
+from random import choice
+from datetime import datetime
+from pathlib import Path
+
+from nonebot import get_bot, get_driver
+from nonebot.adapters.onebot.v11 import (
+    GroupMessageEvent,
+    MessageEvent,
+    MessageSegment,
+    Bot,
+    ActionFailed,
+    Message,
+)
+from nonebot.params import ArgPlainText, CommandArg, RegexGroup
+from nonebot.plugin import on_command, on_regex
+from nonebot.rule import to_me
+from nonebot.matcher import Matcher
+from nonebot.log import logger
+
+from .hoyospider import (
+    ForumType,
+    Search,
+    genshin_hot,
+    honkai3rd_hot,
+    dbycos_hot,
+    starrail_hot,
+    zzz_hot,
+    RankType,
+    Rank,
+    genshin_latest_comment,
+    honkai3rd_latest_comment,
+    dbycos_latest_comment,
+    starrail_latest_comment,
+    zzz_latest_comment,
+    honkai3rd_good,
+    dbycos_good,
+    zzz_good,
+    genshin_rank_daily,
+    dbycos_rank_daily,
+    HoyoBasicSpider,
+)
+from .utils import (
+    check_cd,
+    download_from_urls,
+    msglist2forward,
+    send_forward_msg,
+    send_regular_msg,
+    GENSHIN_NAME,
+    HONKAI3RD_NAME,
+    DBY_NAME,
+    STAR_RAIL,
+    ZZZ_NAME,
+    MAX,
+    IS_FORWARD,
+    SAVE_PATH,
+    SUPER_PERMISSION,
+    WriteError,
+)
+
 
 from nonebot_plugin_apscheduler import scheduler
 
@@ -144,7 +194,6 @@ async def _(
 ):
     if not group[1]:
         await rank_cos.finish("请指定cos类型")
-    args = group[1].split()
     rank_type = {
         "日": RankType.Daily,
         "周": RankType.Weekly,
@@ -399,7 +448,7 @@ g_driver = get_driver()  # 全局driver
 @g_driver.on_startup
 async def start_aps():
     try:
-        if scheduler == None:
+        if not scheduler:
             logger.error("未安装apscheduler插件,无法使用此功能")
         with open(config_path, "r", encoding="utf8") as f:
             g_config: dict[str, dict[str, str]] = json.load(f)
