@@ -14,7 +14,7 @@ repos:
     - id: end-of-file-fixer
 
 - repo: https://github.com/psf/black
-  rev: 24.3.0
+  rev: 24.10.0
   hooks:
     - id: black
       stages: [pre-commit]
