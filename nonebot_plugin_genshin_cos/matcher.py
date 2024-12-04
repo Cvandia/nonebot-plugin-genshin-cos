@@ -6,69 +6,65 @@ except ModuleNotFoundError:
 import asyncio
 import random
 import re
-
-
-from random import choice
+import secrets
 from datetime import datetime
 from pathlib import Path
 
 from nonebot import get_bot, get_driver
 from nonebot.adapters.onebot.v11 import (
+    ActionFailed,
+    Bot,
     GroupMessageEvent,
+    Message,
     MessageEvent,
     MessageSegment,
-    Bot,
-    ActionFailed,
-    Message,
 )
+from nonebot.log import logger
+from nonebot.matcher import Matcher
 from nonebot.params import ArgPlainText, CommandArg, RegexGroup
 from nonebot.plugin import on_command, on_regex
 from nonebot.rule import to_me
-from nonebot.matcher import Matcher
-from nonebot.log import logger
+from nonebot_plugin_apscheduler import scheduler
 
 from .hoyospider import (
     ForumType,
-    Search,
-    genshin_hot,
-    honkai3rd_hot,
-    dbycos_hot,
-    starrail_hot,
-    zzz_hot,
-    RankType,
-    Rank,
-    genshin_latest_comment,
-    honkai3rd_latest_comment,
-    dbycos_latest_comment,
-    starrail_latest_comment,
-    zzz_latest_comment,
-    honkai3rd_good,
-    dbycos_good,
-    zzz_good,
-    genshin_rank_daily,
-    dbycos_rank_daily,
     HoyoBasicSpider,
+    Rank,
+    RankType,
+    Search,
+    dbycos_good,
+    dbycos_hot,
+    dbycos_latest_comment,
+    dbycos_rank_daily,
+    genshin_hot,
+    genshin_latest_comment,
+    genshin_rank_daily,
+    honkai3rd_good,
+    honkai3rd_hot,
+    honkai3rd_latest_comment,
+    starrail_hot,
+    starrail_latest_comment,
+    zzz_good,
+    zzz_hot,
+    zzz_latest_comment,
 )
 from .utils import (
+    DBY_NAME,
+    GENSHIN_NAME,
+    HONKAI3RD_NAME,
+    IS_FORWARD,
+    MAX,
+    SAVE_PATH,
+    STAR_RAIL,
+    SUPER_PERMISSION,
+    ZZZ_NAME,
+    WriteError,
     check_cd,
     download_from_urls,
     msglist2forward,
     send_forward_msg,
     send_regular_msg,
-    GENSHIN_NAME,
-    HONKAI3RD_NAME,
-    DBY_NAME,
-    STAR_RAIL,
-    ZZZ_NAME,
-    MAX,
-    IS_FORWARD,
-    SAVE_PATH,
-    SUPER_PERMISSION,
-    WriteError,
 )
-
-
-from nonebot_plugin_apscheduler import scheduler
 
 g_config: dict[str, dict[str, str]] = {
     "原神": {},
@@ -81,10 +77,10 @@ g_config: dict[str, dict[str, str]] = {
 config_path = Path("config/genshincos.json")
 config_path.parent.mkdir(parents=True, exist_ok=True)
 if config_path.exists():
-    with open(config_path, "r", encoding="utf8") as f:
+    with Path.open(config_path, encoding="utf8") as f:
         g_config = json.load(f)
 else:
-    with open(config_path, "w", encoding="utf8") as f:
+    with Path.open(config_path, "w", encoding="utf8") as f:
         json.dump(g_config, f, ensure_ascii=False, indent=4)
 
 # 事件响应器
@@ -168,7 +164,10 @@ async def handle_cos_type(arg: str, finish_func, send_func, type_dict: dict):
 
 @hot_cos.handle()
 async def _(
-    bot: Bot, matcher: Matcher, event: MessageEvent, arg: Message = CommandArg()
+    bot: Bot,
+    matcher: Matcher,
+    event: MessageEvent,
+    arg: Message = CommandArg(),  # noqa
 ):
     type_dict = {
         **{name: genshin_hot for name in GENSHIN_NAME},
@@ -213,7 +212,10 @@ async def _(
 
 @latest_cos.handle()
 async def _(
-    bot: Bot, matcher: Matcher, event: MessageEvent, arg: Message = CommandArg()
+    bot: Bot,
+    matcher: Matcher,
+    event: MessageEvent,
+    arg: Message = CommandArg(),  # noqa
 ):
     type_dict = {
         **{name: genshin_latest_comment for name in GENSHIN_NAME},
@@ -232,7 +234,10 @@ async def _(
 
 @good_cos.handle()
 async def _(
-    bot: Bot, matcher: Matcher, event: MessageEvent, arg: Message = CommandArg()
+    bot: Bot,
+    matcher: Matcher,
+    event: MessageEvent,
+    arg: Message = CommandArg(),  # noqa
 ):
     if not arg:
         await good_cos.finish("请指定cos类型")
@@ -255,7 +260,7 @@ async def _(
 
 
 @show_aps.handle()
-async def _(bot: Bot, event: GroupMessageEvent):
+async def _(event: GroupMessageEvent):
     send_msg = "本群订阅的推送有:\n"
     for game_type, dict in g_config.items():
         if game_type:
@@ -304,7 +309,7 @@ async def _(event: GroupMessageEvent, args: tuple[str, ...] = RegexGroup()):
         except Exception as e:
             logger.error(e)
 
-    with open(config_path, "w", encoding="utf8") as f:
+    with Path.open(config_path, "w", encoding="utf8") as f:
         json.dump(g_config, f, ensure_ascii=False, indent=4)
 
     await turn_aps.finish(f"已成功{mode}{aps_group_id}的{game_type}定时推送")
@@ -423,7 +428,7 @@ async def send_images(
         selected_images = (
             random.sample(image_list, num_images)
             if num_images > 1
-            else [choice(image_list)]
+            else [secrets.choice(image_list)]
         )
         msg_list = (
             [MessageSegment.text(f"✅找到最新的一些{args[0]}图如下:✅")]
@@ -432,7 +437,7 @@ async def send_images(
         )
 
         for img in selected_images:
-            msg_list.append(MessageSegment.image(img))
+            msg_list.append(MessageSegment.image(img))  # noqa
 
         if IS_FORWARD:
             await send_forward_msg(bot, event, "米游社cos", bot.self_id, msg_list)
@@ -450,7 +455,7 @@ async def start_aps():
     try:
         if not scheduler:
             logger.error("未安装apscheduler插件,无法使用此功能")
-        with open(config_path, "r", encoding="utf8") as f:
+        with Path.open(config_path, encoding="utf8") as f:
             g_config: dict[str, dict[str, str]] = json.load(f)
         for game_type, _dict in g_config.items():
             if game_type == "":

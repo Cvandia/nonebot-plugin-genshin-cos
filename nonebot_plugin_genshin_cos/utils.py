@@ -46,8 +46,6 @@ ZZZ_NAME = ["绝区零", "绝零区", "绝零", "0", "零", "绝区", "0区"]
 class WriteError(Exception):
     """写入错误"""
 
-    pass
-
 
 # 加载配置
 
@@ -74,9 +72,8 @@ def check_cd(user_id: int, user_data: dict[str, datetime]) -> tuple[bool, int, d
     if datetime.now() < data[f"{user_id}"]:
         delta = (data[str(user_id)] - datetime.now()).seconds
         return False, delta, data
-    else:
-        data[str(user_id)] = datetime.now() + timedelta(seconds=CD)
-        return True, 0, data
+    data[str(user_id)] = datetime.now() + timedelta(seconds=CD)
+    return True, 0, data
 
 
 async def download_from_urls(urls: list[str], path: Path):
@@ -100,7 +97,7 @@ async def download_from_urls(urls: list[str], path: Path):
                 new_path = path / filename
                 rsp = await client.get(url)
                 content = rsp.content
-                with open(new_path, "wb") as f:
+                with Path.open(new_path, "wb") as f:
                     f.write(content)
             except (
                 httpx.ConnectError,
@@ -142,10 +139,9 @@ async def send_forward_msg(
         return await bot.call_api(
             "send_group_forward_msg", group_id=event.group_id, messages=messages
         )
-    else:
-        return await bot.call_api(
-            "send_private_forward_msg", user_id=event.user_id, messages=messages
-        )
+    return await bot.call_api(
+        "send_private_forward_msg", user_id=event.user_id, messages=messages
+    )
 
 
 def msglist2forward(name: str, uin: str, msgs: list) -> list:
@@ -170,12 +166,13 @@ async def send_regular_msg(matcher: Matcher, messages: list):
     :param matcher: Matcher
     :param messages: 消息列表
     """
+    MAX_RETRIES = 2
     cnt = 1
-    for msg in messages:
-        try:
+    try:
+        for msg in messages:
             cnt += 1
             await matcher.send(msg)
             await sleep(DELAY)
-        except ActionFailed:
-            if cnt <= 2:
-                await matcher.send("消息可能风控,请尝试更改为合并转发模式")
+    except ActionFailed:
+        if cnt <= MAX_RETRIES:
+            await matcher.send("消息可能风控,请尝试更改为合并转发模式")

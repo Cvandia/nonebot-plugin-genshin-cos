@@ -1,7 +1,8 @@
+from abc import abstractmethod
 from enum import Enum, unique
-from httpx import Response
 
 import httpx
+from httpx import Response
 
 # 类定义
 
@@ -23,6 +24,7 @@ class HoyoBasicSpider:
             "Connection": "keep-alive",
         }
 
+    @abstractmethod
     def get_params(self, page_size: int) -> dict:
         """
         获取参数
@@ -34,6 +36,7 @@ class HoyoBasicSpider:
         """
         return {}
 
+    @abstractmethod
     def sync_get_urls(self, page_size: int) -> str:
         """
         同步获取urls
@@ -45,6 +48,7 @@ class HoyoBasicSpider:
         """
         return ""
 
+    @abstractmethod
     def sync_get_name(self, page_size: int) -> str:
         """
         同步获取names
@@ -56,7 +60,7 @@ class HoyoBasicSpider:
         """
         return ""
 
-    def sync_get(self, params: dict = {}, is_good: bool = False):
+    def sync_get(self, params: dict, is_good: bool = False):
         """
         同步获取
 
@@ -70,7 +74,7 @@ class HoyoBasicSpider:
         response = httpx.get(self.api, params=params, headers=self.headers)
         return self.handle_response(response, is_good)
 
-    def sync_name(self, params: dict = {}, is_good: bool = False):
+    def sync_name(self, params: dict, is_good: bool = False):
         """
         同步获取
 
@@ -84,6 +88,7 @@ class HoyoBasicSpider:
         response = httpx.get(self.api, params=params, headers=self.headers)
         return self.get_rsp_name(response, is_good)
 
+    @abstractmethod
     async def async_get_urls(self, page_size: int = 20) -> list:
         """
         异步获取urls
@@ -95,6 +100,7 @@ class HoyoBasicSpider:
         """
         return []
 
+    @abstractmethod
     async def async_get_name(self, page_size: int = 20) -> list:
         """
         异步获取names
@@ -106,7 +112,7 @@ class HoyoBasicSpider:
         """
         return []
 
-    async def async_get(self, params: dict = {}, is_good: bool = False):
+    async def async_get(self, params: dict, is_good: bool = False):
         """
         异步获取
 
@@ -122,7 +128,7 @@ class HoyoBasicSpider:
 
         return self.handle_response(response, is_good)
 
-    async def async_name(self, params: dict = {}, is_good: bool = False):
+    async def async_name(self, params: dict, is_good: bool = False):
         """
         异步获取
 
@@ -148,16 +154,12 @@ class HoyoBasicSpider:
             - urls
         """
 
-        urls = []
         if is_good:
             posts = response.json()["data"]["posts"]
         else:
             posts = response.json()["data"]["list"]
-        for post in posts:
-            images = post["post"]["images"]
-            for image in images:
-                urls.append(image)
-        return urls
+
+        return [image for post in posts for image in post["post"]["images"]]
 
     def get_rsp_name(self, response: Response, is_good: bool = False) -> list:
         """
@@ -169,14 +171,11 @@ class HoyoBasicSpider:
         返回:
             - names
         """
-        names = []
         if is_good:
             posts = response.json()["data"]["posts"]
         else:
             posts = response.json()["data"]["list"]
-        for post in posts:
-            names.append(post["post"]["subject"])
-        return names
+        return [post["post"]["subject"] for post in posts]
 
 
 @unique
@@ -265,13 +264,12 @@ class Rank(HoyoBasicSpider):
         self.game_name = gametype.name  # 游戏名
 
     def get_params(self, page_size: int) -> dict:
-        params = {
+        return {
             "forum_id": self.forum_id,
             "gids": self.gids,
             "page_size": page_size,
             "type": self.type,
         }
-        return params
 
     def sync_get_urls(self, page_size: int = 21) -> list:
         params = self.get_params(page_size)
@@ -306,12 +304,11 @@ class Hot(HoyoBasicSpider):
         self.is_hot = True
 
     def get_params(self, page_size: int) -> dict:
-        params = {
+        return {
             "forum_id": self.forum_id,
             "is_hot": self.is_hot,
             "page_size": page_size,
         }
-        return params
 
     def sync_get_urls(self, page_size: int = 20) -> list:
         params = self.get_params(page_size)
@@ -345,8 +342,7 @@ class Good(HoyoBasicSpider):
         self.game_name = gametype.name
 
     def get_params(self, page_size: int) -> dict:
-        params = {"forum_id": self.forum_id, "gids": self.gids, "page_size": page_size}
-        return params
+        return {"forum_id": self.forum_id, "gids": self.gids, "page_size": page_size}
 
     def sync_get_urls(self, page_size: int = 20) -> list:
         params = self.get_params(page_size)
@@ -381,12 +377,11 @@ class Latest(HoyoBasicSpider):
         self.game_name = gametype.name
 
     def get_params(self, page_size: int) -> dict:
-        params = {
+        return {
             "forum_id": self.forum_id,
             "page_size": page_size,
             "sort_type": self.sort_type,
         }
-        return params
 
     def sync_get_urls(self, page_size: int = 20) -> list:
         params = self.get_params(page_size)
@@ -421,13 +416,12 @@ class Search(HoyoBasicSpider):
         self.forum_id = forum_id.value
 
     def get_params(self, page_size: int) -> dict:
-        params = {
+        return {
             "gids": self.gids,
             "size": page_size,
             "keyword": self.keyword,
             "forum_id": self.forum_id,
         }
-        return params
 
     def sync_get_urls(self, page_size: int = 20) -> list:
         params = self.get_params(page_size)
