@@ -143,7 +143,8 @@ class HoyoBasicSpider:
             response = await client.get(self.api, params=params, headers=self.headers)
         return self.get_rsp_name(response, is_good)
 
-    def handle_response(self, response: Response, is_good: bool = False) -> list:
+    @staticmethod
+    def handle_response(response: Response, is_good: bool = False) -> list:
         """
         处理响应
 
@@ -161,7 +162,8 @@ class HoyoBasicSpider:
 
         return [image for post in posts for image in post["post"]["images"]]
 
-    def get_rsp_name(self, response: Response, is_good: bool = False) -> list:
+    @staticmethod
+    def get_rsp_name(response: Response, is_good: bool = False) -> list:
         """
         获取响应的帖子名称
 
