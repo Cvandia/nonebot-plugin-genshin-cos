@@ -95,7 +95,7 @@ hot_cos = on_command(
     "热门cos", aliases={"热门coser", "热门cos图"}, block=False, priority=5
 )
 rank_cos = on_regex(
-    r"^(日|月|周)榜cos[r]?[图]?(.+)?", priority=5, block=False, flags=re.I
+    r"^(日|月|周)榜cos[er]?[图]?(.+)?", priority=5, block=False, flags=re.I
 )
 latest_cos = on_command(
     "最新cos", aliases={"最新coser", "最新cos图"}, block=False, priority=5
@@ -104,7 +104,7 @@ good_cos = on_command(
     "精品cos", aliases={"精品coser", "精品cos图"}, block=False, priority=5
 )
 search_cos = on_regex(
-    r"^搜索(原神|崩坏3|星穹铁道|大别野|绝区零)cos[r]?[图]?(.+)?",
+    r"^搜索(原神|崩坏3|星穹铁道|大别野|绝区零)cos[er]?[图]?(.+)?",
     block=False,
     priority=5,
 )
