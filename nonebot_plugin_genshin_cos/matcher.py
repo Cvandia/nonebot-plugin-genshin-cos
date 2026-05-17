@@ -170,11 +170,11 @@ async def _(
     arg: Message = CommandArg(),  # noqa
 ):
     type_dict = {
-        **{name: genshin_hot for name in GENSHIN_NAME},
-        **{name: honkai3rd_hot for name in HONKAI3RD_NAME},
-        **{name: dbycos_hot for name in DBY_NAME},
-        **{name: starrail_hot for name in STAR_RAIL},
-        **{name: zzz_hot for name in ZZZ_NAME},
+        **dict.fromkeys(GENSHIN_NAME, genshin_hot),
+        **dict.fromkeys(HONKAI3RD_NAME, honkai3rd_hot),
+        **dict.fromkeys(DBY_NAME, dbycos_hot),
+        **dict.fromkeys(STAR_RAIL, starrail_hot),
+        **dict.fromkeys(ZZZ_NAME, zzz_hot),
     }
     await handle_cos_type(
         arg.extract_plain_text(),
@@ -193,14 +193,17 @@ async def _(
 ):
     if not group[1]:
         await rank_cos.finish("请指定cos类型")
-    rank_type = {
+    rank_type_map = {
         "日": RankType.Daily,
         "周": RankType.Weekly,
         "月": RankType.Monthly,
-    }.get(group[0])
+    }
+    rank_type = rank_type_map.get(group[0])
+    if rank_type is None:
+        await rank_cos.finish("请指定榜单类型")
     type_dict = {
-        **{name: Rank(ForumType.GenshinCos, rank_type) for name in GENSHIN_NAME},
-        **{name: Rank(ForumType.DBYCOS, rank_type) for name in DBY_NAME},
+        **dict.fromkeys(GENSHIN_NAME, Rank(ForumType.GenshinCos, rank_type)),
+        **dict.fromkeys(DBY_NAME, Rank(ForumType.DBYCOS, rank_type)),
     }
     await handle_cos_type(
         group[1],
@@ -218,11 +221,11 @@ async def _(
     arg: Message = CommandArg(),  # noqa
 ):
     type_dict = {
-        **{name: genshin_latest_comment for name in GENSHIN_NAME},
-        **{name: honkai3rd_latest_comment for name in HONKAI3RD_NAME},
-        **{name: dbycos_latest_comment for name in DBY_NAME},
-        **{name: starrail_latest_comment for name in STAR_RAIL},
-        **{name: zzz_latest_comment for name in ZZZ_NAME},
+        **dict.fromkeys(GENSHIN_NAME, genshin_latest_comment),
+        **dict.fromkeys(HONKAI3RD_NAME, honkai3rd_latest_comment),
+        **dict.fromkeys(DBY_NAME, dbycos_latest_comment),
+        **dict.fromkeys(STAR_RAIL, starrail_latest_comment),
+        **dict.fromkeys(ZZZ_NAME, zzz_latest_comment),
     }
     await handle_cos_type(
         arg.extract_plain_text(),
@@ -247,9 +250,9 @@ async def _(
     elif args[0] in STAR_RAIL:
         await good_cos.finish("星穹铁道暂不支持精品cos")
     type_dict = {
-        **{name: honkai3rd_good for name in HONKAI3RD_NAME},
-        **{name: dbycos_good for name in DBY_NAME},
-        **{name: zzz_good for name in ZZZ_NAME},
+        **dict.fromkeys(HONKAI3RD_NAME, honkai3rd_good),
+        **dict.fromkeys(DBY_NAME, dbycos_good),
+        **dict.fromkeys(ZZZ_NAME, zzz_good),
     }
     await handle_cos_type(
         arg.extract_plain_text(),
@@ -320,11 +323,11 @@ async def _(event: GroupMessageEvent, args: tuple[str, ...] = RegexGroup()):
 )
 async def got_type(game_type: str = ArgPlainText()):
     type_dict = {
-        **{name: genshin_hot for name in GENSHIN_NAME},
-        **{name: dbycos_hot for name in DBY_NAME},
-        **{name: honkai3rd_hot for name in HONKAI3RD_NAME},
-        **{name: starrail_hot for name in STAR_RAIL},
-        **{name: zzz_hot for name in ZZZ_NAME},
+        **dict.fromkeys(GENSHIN_NAME, genshin_hot),
+        **dict.fromkeys(DBY_NAME, dbycos_hot),
+        **dict.fromkeys(HONKAI3RD_NAME, honkai3rd_hot),
+        **dict.fromkeys(STAR_RAIL, starrail_hot),
+        **dict.fromkeys(ZZZ_NAME, zzz_hot),
     }
     hot = type_dict.get(game_type)
     if not hot:
@@ -364,8 +367,8 @@ async def aps_send(aps_goup_id: str):
             try:
                 group_id = int(saved_group_id)
                 send_type = {
-                    **{name: genshin_rank_daily for name in GENSHIN_NAME},
-                    **{name: dbycos_rank_daily for name in DBY_NAME},
+                    **{name: genshin_rank_daily for name in GENSHIN_NAME},  # noqa: C420
+                    **{name: dbycos_rank_daily for name in DBY_NAME},  # noqa: C420
                 }.get(game_type)
                 if not send_type:
                     continue

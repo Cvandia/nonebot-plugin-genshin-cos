@@ -37,7 +37,7 @@ class HoyoBasicSpider:
         return {}
 
     @abstractmethod
-    def sync_get_urls(self, page_size: int) -> str:
+    def sync_get_urls(self, page_size: int) -> list:
         """
         同步获取urls
 
@@ -46,10 +46,10 @@ class HoyoBasicSpider:
         返回:
             - urls
         """
-        return ""
+        return []
 
     @abstractmethod
-    def sync_get_name(self, page_size: int) -> str:
+    def sync_get_name(self, page_size: int) -> list:
         """
         同步获取names
 
@@ -58,7 +58,7 @@ class HoyoBasicSpider:
         返回:
             - names
         """
-        return ""
+        return []
 
     def sync_get(self, params: dict, is_good: bool = False):
         """
@@ -74,7 +74,7 @@ class HoyoBasicSpider:
         response = httpx.get(self.api, params=params, headers=self.headers)
         return self.handle_response(response, is_good)
 
-    def sync_name(self, params: dict, is_good: bool = False):
+    def sync_name(self, params: dict, is_good: bool = False) -> list:
         """
         同步获取
 

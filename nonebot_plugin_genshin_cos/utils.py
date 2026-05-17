@@ -2,6 +2,7 @@ from asyncio import sleep
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import anyio
 import httpx
 from httpx import TimeoutException
 from nonebot.adapters.onebot.v11 import (
@@ -86,9 +87,9 @@ async def download_from_urls(urls: list[str], path: Path):
     is_download_error = False
     error_cnt = 0
     success_cnt = 0
-    if not path.exists():
-        path.mkdir(parents=True)
-    if not path.is_dir():
+    if not await anyio.Path(path).exists():
+        await anyio.Path(path).mkdir(parents=True)
+    if not await anyio.Path(path).is_dir():
         raise WriteError("路径不是文件夹")
     async with httpx.AsyncClient() as client:
         for url in urls:
