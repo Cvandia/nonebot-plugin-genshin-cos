@@ -367,8 +367,8 @@ async def aps_send(aps_goup_id: str):
             try:
                 group_id = int(saved_group_id)
                 send_type = {
-                    **{name: genshin_rank_daily for name in GENSHIN_NAME},  # noqa: C420
-                    **{name: dbycos_rank_daily for name in DBY_NAME},  # noqa: C420
+                    **{name: genshin_rank_daily for name in GENSHIN_NAME},
+                    **{name: dbycos_rank_daily for name in DBY_NAME},
                 }.get(game_type)
                 if not send_type:
                     continue

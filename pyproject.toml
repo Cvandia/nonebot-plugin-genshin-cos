@@ -30,4 +30,7 @@ readme = "README.md"
 license = {text = "MIT"}
 
 [dependency-groups]
-dev = ["pre-commit>=4.0.1"]
+dev = [
+    "pre-commit>=4.0.1",
+    "ruff>=0.15.13",
+]
