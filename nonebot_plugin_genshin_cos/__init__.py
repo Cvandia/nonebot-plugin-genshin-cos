@@ -6,7 +6,6 @@ require("nonebot_plugin_apscheduler")
 
 from . import matcher  # noqa
 
-
 with contextlib.suppress(Exception):
     from nonebot.plugin import PluginMetadata
 
