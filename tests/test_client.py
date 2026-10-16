@@ -1,4 +1,5 @@
 import asyncio
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
@@ -76,13 +77,16 @@ async def test_api_errors(body):
         await client.close()
 
 
-class ChunkStream(httpx.AsyncByteStream):
-    def __aiter__(self):
-        return self._chunks()
-
-    async def _chunks(self):
+def chunk_stream(error=None):
+    async def chunks():
         for _ in range(4):
             yield b"a" * 65536
+            if error is not None:
+                raise error
+
+    stream = AsyncMock(spec=httpx.AsyncByteStream)
+    stream.__aiter__.side_effect = chunks
+    return stream
 
 
 async def test_streaming_download_and_skip(tmp_path):
@@ -92,7 +96,7 @@ async def test_streaming_download_and_skip(tmp_path):
         calls.append(request)
         if request.url.path == "/bad.jpg":
             return httpx.Response(404)
-        return httpx.Response(200, stream=ChunkStream())
+        return httpx.Response(200, stream=chunk_stream())
 
     client = HoyoClient(transport=httpx.MockTransport(respond))
     urls = [
@@ -111,16 +115,12 @@ async def test_streaming_download_and_skip(tmp_path):
         await client.close()
 
 
-class BrokenStream(ChunkStream):
-    async def _chunks(self):
-        yield b"partial"
-        raise httpx.ReadError("connection lost")
-
-
 async def test_partial_download_removed(tmp_path):
     client = HoyoClient(
         transport=httpx.MockTransport(
-            lambda _: httpx.Response(200, stream=BrokenStream())
+            lambda _: httpx.Response(
+                200, stream=chunk_stream(httpx.ReadError("connection lost"))
+            )
         )
     )
     try:
@@ -130,16 +130,10 @@ async def test_partial_download_removed(tmp_path):
         await client.close()
 
 
-class CancelledStream(ChunkStream):
-    async def _chunks(self):
-        yield b"partial"
-        raise asyncio.CancelledError
-
-
 async def test_cancelled_download_removed(tmp_path):
     client = HoyoClient(
         transport=httpx.MockTransport(
-            lambda _: httpx.Response(200, stream=CancelledStream())
+            lambda _: httpx.Response(200, stream=chunk_stream(asyncio.CancelledError()))
         )
     )
     try:
