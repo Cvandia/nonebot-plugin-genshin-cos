@@ -1,40 +1,22 @@
-import contextlib
+from nonebot import require
+from nonebot.plugin import PluginMetadata
 
-from nonebot import logger, require
+from .config import Config
 
+require("nonebot_plugin_alconna")
+require("nonebot_plugin_localstore")
 require("nonebot_plugin_apscheduler")
 
-from . import matcher  # noqa
+__plugin_meta__ = PluginMetadata(
+    name="米游社cos",
+    description="获取米游社 cos 图片、搜索、下载及每日榜单推送",
+    usage="热门cos 原神 x3；搜索原神cos 甘雨；开启每日推送原神 8:30",
+    type="application",
+    homepage="https://github.com/Cvandia/nonebot-plugin-genshin-cos",
+    config=Config,
+    supported_adapters={"~onebot.v11"},
+)
 
+from . import matcher
 
-with contextlib.suppress(Exception):
-    from nonebot.plugin import PluginMetadata
-
-    __plugin_meta__ = PluginMetadata(
-        name="米游社cos",
-        description="获取原神coser图片",
-        usage="原神cos,CosPlus,下载cos",
-        type="application",
-        homepage="https://github.com/Cvandia/nonebot-plugin-genshin-cos",
-        supported_adapters={"~onebot.v11"},
-        extra={
-            "unique_name": "genshin_cos",
-            "example": "保存cos:保存cos图片至本地文件",
-            "author": "nor",
-            "version": "0.3.3",
-        },
-    )
-
-
-logo = r"""<g>
- /$$      /$$ /$$ /$$   /$$         /$$     /$$               /$$$$$$
-| $$$    /$$$|__/| $$  | $$        |  $$   /$$/              /$$__  $$
-| $$$$  /$$$$ /$$| $$  | $$  /$$$$$$\  $$ /$$//$$$$$$       | $$  \__/  /$$$$$$   /$$$$$$$
-| $$ $$/$$ $$| $$| $$$$$$$$ /$$__  $$\  $$$$//$$__  $$      | $$       /$$__  $$ /$$_____/
-| $$  $$$| $$| $$| $$__  $$| $$  \ $$ \  $$/| $$  \ $$      | $$      | $$  \ $$|  $$$$$$
-| $$\  $ | $$| $$| $$  | $$| $$  | $$  | $$ | $$  | $$      | $$    $$| $$  | $$ \____  $$
-| $$ \/  | $$| $$| $$  | $$|  $$$$$$/  | $$ |  $$$$$$/      |  $$$$$$/|  $$$$$$/ /$$$$$$$/
-|__/     |__/|__/|__/  |__/ \______/   |__/  \______/        \______/  \______/ |_______/
-</g>"""
-
-logger.opt(colors=True).info(logo)
+__all__ = ["matcher"]

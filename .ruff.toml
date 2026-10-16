@@ -63,3 +63,6 @@ unfixable = [
     "F841",   # unused-variable
     "ERA001", # commented-out-code
 ]
+
+[lint.per-file-ignores]
+"tests/**" = ["S101", "PLR2004"]

@@ -150,6 +150,11 @@ dmypy.json
 cython_debug/
 
 # PyCharm
+.ruff_cache/
+.pdm-build/
+/data/
+/cache/
+/config/
 #  JetBrains specific template is maintainted in a separate JetBrains.gitignore that can
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
