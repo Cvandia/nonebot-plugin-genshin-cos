@@ -1,129 +1,124 @@
-<div align="center">
-
-<a href="https://v2.nonebot.dev/store"><img src="./res/ico.png" width="180" height="180" alt="NoneBotPluginLogo"></a>
-
-</div>
-
-<div align="center">
-
 # nonebot-plugin-genshin-cos
 
-_⭐基于Nonebot2的一款获取米游社cos的插件⭐_
+基于 NoneBot2 的米游社图片插件，支持原神、崩坏3、星穹铁道、大别野和绝区零。
+命令由 [Alconna](https://github.com/nonebot/plugin-alconna) 解析，
+数据由 [LocalStore](https://github.com/nonebot/plugin-localstore) 管理，消息使用 OneBot V11。
 
+## 安装
 
-</div>
+需要 Python 3.10+、NoneBot2 2.4+ 和 OneBot V11 适配器。依赖解析器可能按 Alconna 版本安装更新的 NoneBot2。
 
-<div align="center">
-<a href="https://www.python.org/downloads/release/python-390/"><img src="https://img.shields.io/badge/python-3.8+-blue"></a>  <a href=""><img src="https://img.shields.io/badge/QQ-1141538825-yellow"></a> <a href="https://github.com/Cvandia/nonebot_plugin_genshin_cos/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue"></a> <a href="https://v2.nonebot.dev/"><img src="https://img.shields.io/badge/Nonebot2-rc1+-red"></a>
-</div>
-
-
-## ⭐ 介绍
-
-受到[教程](https://juejin.cn/post/6990320268010848286)的启发，根据原文基础上修改编写出本插件，**若你不是Nonebot用户，并且想使用米游社cos相关内容，请参考[以下内容](https://github.com/Cvandia/nonebot_plugin_genshin_cos/blob/main/nonebot_plugin_genshin_cos/hoyospider.py)**
-
-
-<div align="center">
-
-
-### 目前不仅有原神，现在支持崩坏3、星穹铁道、大别野、绝区零的cos图！
-
-</div>
-
-## 💿 安装
-
-<details>
-<summary>安装</summary>
-
-pip 安装
-
-```
-pip install nonebot-plugin-genshin-cos
-```
-- 在nonebot的pyproject.toml中的plugins = ["xxx"]添加此插件
-
-nb-cli安装
-
-```
-nb plugin install nonebot-plugin-genshin-cos --upgrade
+```bash
+nb plugin install nonebot-plugin-genshin-cos
 ```
 
-git clone安装(不推荐)
+从本地重构源码安装：
 
-- 运行
-```git clone https://github.com/Cvandia/nonebot_plugin_genshin_cos```
-- 在运行处
-把文件夹`nonebot-plugin-genshen-cos`复制到bot根目录下的`src/plugins`(或者你创建bot时的其他名称`xxx/plugins`)
+```bash
+python -m pip install .
+```
 
- 
- </details>
- 
- <details>
- <summary>注意</summary>
- 
- 推荐镜像站下载
-  
- 清华源```https://pypi.tuna.tsinghua.edu.cn/simple```
- 
- 阿里源```https://mirrors.aliyun.com/pypi/simple/```
+在机器人项目的 `pyproject.toml` 中启用：
 
-</details>
+```toml
+[tool.nonebot]
+plugins = ["nonebot_plugin_genshin_cos"]
+```
 
+Alconna、LocalStore 和 APScheduler 会自动加载，不需要额外填写到插件列表。
 
-## ⚙️ 配置
-### 在env.中添加以下配置
+## 使用
 
-| 配置 | 类型 | 默认值 | 说明 |
-|:-----:|:----:|:----:|:---:|
-|cos_max|int|5|最大返回cos图片数量|
-|cos_path|str|无|不配置则默认下载到bot根目录的`"data/genshin_cos"`,支持绝对路劲如`"C:/Users/image"`和相对bot根目录路劲如`"coser/image"`
-|cos_cd|int|30|用户触发cd|
-|cos_forward_msg|bool|True|默认是否合并转发|
-|cos_delay|float|0.5|当上面的配置项为`False`时，发送图片的每张延迟s|
+命令不需要前缀，也兼容机器人配置的命令前缀，例如 `/热门cos 原神 x3`。
+原有的 `coser`、`cos图` 后缀及游戏别名继续可用。
+数量支持 `3`、`x3`、`X3`、`*3`，超过 `cos_max` 时取上限；零、负数和非整数会提示错误。
 
-> 注意：绝对路劲中用`/`，用`\`可能会被转义
+| 命令 | 示例 | 权限 |
+| --- | --- | --- |
+| 热门cos | `热门cos 原神 x3` | 所有人 |
+| 最新cos | `最新cos 崩铁 x2` | 所有人 |
+| 日榜cos / 周榜cos / 月榜cos | `周榜cos 原神 x3` | 所有人 |
+| 精品cos | `精品cos 绝区零 x2` | 所有人 |
+| 搜索cos | `搜索cos 原神 甘雨 x3` | 所有人 |
+| 原有搜索格式 | `搜索原神cos甘雨 x3` | 所有人 |
+| 下载cos / 保存cos / cos保存 | `下载cos 原神`，省略游戏时会询问 | 超管、群主、管理员 |
+| 开启每日推送 | `开启每日推送原神 8:30` | 群内超管、群主、管理员 |
+| 关闭每日推送 | `关闭每日推送原神` | 群内超管、群主、管理员 |
+| 查看本群推送 / 查看推送 / 查看订阅 | `@机器人 查看本群推送` | 群内所有人 |
 
-## ⭐ 使用
+搜索词包含空格时使用引号，例如 `搜索cos 原神 "甘雨 cosplay" x2`。
+精品图延续原有限制，不支持原神和星穹铁道。
+每日推送仍仅支持原神和大别野，时间采用 APScheduler 的时区（默认由宿主系统决定）。
+每日推送使用合并转发，图片数量也受 `cos_max` 限制。
+新订阅绑定当前机器人，机器人断线时跳过推送；重新开启同一订阅可更新时间。
 
-### 指令：
-| 指令 | 需要@ | 范围 | 说明 |权限|
-|:--------:|:----:|:----:|:----:|:----:|
-|下载cos|否|群聊、私聊|下载热门cos图|超管、群主、管理员|
-|热门cos|否|同上|获取指定游戏热门cos图，如`热门cos 原神 x3`|全部|
-|日、周、月榜cos|否|同上|获取排行榜cos图。如`日榜cos 原神 x3`|全部|
-|最新cos|否|同上|和上面差不多，不写了，哼哼|全部|
-|精品cos|否|同上|上上面一样的道理！|全部|
-|搜索(原神\|崩坏3\|星穹铁道\|大别野\|绝区零)cos|否|同上|搜索米游社社区的cos图片<br>例：<br>搜索原神cos甘雨<br>搜索崩坏3cos图德丽莎|全部|
-|开启每日推送xx (时间)|否|仅群聊|如`开启每日推送原神 8:30`,注意时间的格式|超管、群主、管理员|
-|查看本群推送|是|群聊|查看本群的订阅cos目录|全部|
+## 配置
 
-**注意**
+在机器人 `.env` 中按需设置：
 
-指令触发方式是正则匹配的，不需要加指令前缀
+| 配置项 | 类型 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| cos_max | int | 10 | 每次最多发送的图片数，范围 1–100 |
+| cos_path | str | 空字符串 | 图片保存目录；为空时使用 LocalStore 插件数据目录下的 images |
+| cos_cd | int | 10 | 每个机器人下每位用户的请求冷却秒数，0 表示关闭 |
+| cos_forward_msg | bool | false | 普通查图是否使用合并转发 |
+| cos_delay | float | 0.5 | 普通逐张发送的间隔秒数 |
+| cos_timeout | float | 20 | HTTP 请求超时秒数，必须大于 0 |
 
-## 🌙 未来
- - [x] 缓慢更新，最近学业繁忙哦~
- - [x] 随机发送cos图片
- - [x] 保存cos图
- - [x] 内置cd和用户触发上限
- - [x] 合并转发发送多张cos图
+指定 `cos_path` 时，相对路径以机器人运行目录为基准，绝对路径直接使用。
+也可以通过 LocalStore 配置统一修改数据根目录：
 
-~~playwright获取cos图~~
-~~选择发送图库方式：离线 (迅速) or 在线（缓慢、目前是的）~~
+```dotenv
+LOCALSTORE_USE_CWD=true
+COS_MAX=10
+COS_CD=10
+COS_FORWARD_MSG=false
+COS_DELAY=0.5
+COS_TIMEOUT=20
+```
 
- - [x] 支持米游社其他社区cos获取
- - [x] 支持每日推送热榜的cos图
+`LOCALSTORE_USE_CWD=true` 时，本插件数据默认位于运行目录
+`data/nonebot_plugin_genshin_cos/`。其他配置方式参考
+[LocalStore 文档](https://github.com/nonebot/plugin-localstore#配置项)，
+可通过 `nb localstore` 查看目录。
 
---- 喜欢记得点个star⭐---
+## 从旧版迁移
 
-## ❗免责声明
+- Python 最低版本由 3.9 调整为 3.10。
+- 首次启动若 LocalStore 中没有 `subscriptions.json`，会读取旧的
+  `config/genshincos.json`，校验并转换后写入新位置，旧文件保留。
+- 旧订阅缺少机器人 ID，临时使用第一个已连接的 OneBot V11 机器人；
+  多机器人环境请由目标机器人重新执行开启命令以绑定。
+- 无效或损坏的订阅文件会阻止插件启动，不会静默清空。修正文件后重新启动。
+- 旧下载图片不会自动搬移。需要继续使用原目录时设置 `cos_path`。
+- 图片按 URL 的 SHA-256 命名，避免查询参数及同名 URL 冲突；已保存文件会跳过。
+- 移除了未在插件内使用的同步爬虫接口和全局爬虫实例。直接导入旧爬虫类的外部脚本需要改用 `HoyoClient`。
 
-图片版权归米游社原神cos社区所属，请尊重
-coser的创作权
+## 实现与验证
 
+- 一个按需创建、关机关闭的 HTTP 客户端复用连接池。
+- 同一榜单一次请求同时获取标题和图片，不重复调用接口。
+- 冷却记录使用单调时钟，到期按顺序删除，并每分钟清理空闲记录。
+- 图片按 64 KiB 流式写盘，失败继续后续下载，取消时清理临时文件。
+- 最多同时处理 4 个图片请求，下载任务单独串行，避免同一文件并发写入。
+- 订阅通过临时文件替换保存；写入失败时保留内存和原文件。
+- 只保留 `uv.lock` 管理开发依赖；移除了 aiofiles、ujson 和 pathlib 回溯包。
 
+开发与检查：
 
-## 💝 特别鸣谢
+```bash
+uv sync --frozen --group dev
+uv run pytest -q
+uv run ruff check .
+uv run ruff format --check .
+```
 
-- [x] [Nonebot](https://github.com/nonebot/nonebot2): 本项目的基础，非常好用的聊天机器人框架。
-- [x] [@qxdn](https://github.com/qxdn):感谢qxdn的[博客文章](https://qianxu.run/2021/11/12/mihoyo-bbs-crawler/),有兴趣大家也去看看咯
+测试使用模拟 HTTP 和 OneBot API，覆盖命令实际分发、权限、冷却、订阅迁移、
+多机器人隔离、接口错误和下载中断。实际米游社接口及 QQ 发图仍需部署后联调。
+流式下载降低下载期间的图片缓冲峰值；Alconna 自身也有依赖开销，不代表整个机器人进程常驻内存一定下降。
+
+图片版权归原作者所有，请尊重 coser 的创作权。
+
+## License
+
+[MIT](LICENSE)

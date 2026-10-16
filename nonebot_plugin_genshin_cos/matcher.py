@@ -1,17 +1,16 @@
-try:
-    import ujson as json
-except ModuleNotFoundError:
-    import json
+from __future__ import annotations
 
 import asyncio
 import random
-import re
-import secrets
-from datetime import datetime
+from functools import lru_cache
 from pathlib import Path
 
-from nonebot import get_bot, get_driver
+import httpx
+from arclet.alconna import Alconna, Args, CommandMeta
+from nonebot import get_bots, get_driver, logger
 from nonebot.adapters.onebot.v11 import (
+    GROUP_ADMIN,
+    GROUP_OWNER,
     ActionFailed,
     Bot,
     GroupMessageEvent,
@@ -19,469 +18,333 @@ from nonebot.adapters.onebot.v11 import (
     MessageEvent,
     MessageSegment,
 )
-from nonebot.log import logger
-from nonebot.matcher import Matcher
-from nonebot.params import ArgPlainText, CommandArg, RegexGroup
-from nonebot.plugin import on_command, on_regex
+from nonebot.matcher import (
+    Matcher,  # noqa: TC002 - NoneBot resolves annotations at runtime
+)
+from nonebot.permission import SUPERUSER
 from nonebot.rule import to_me
+from nonebot_plugin_alconna import Arparma, on_alconna
 from nonebot_plugin_apscheduler import scheduler
+from nonebot_plugin_localstore import get_plugin_data_dir, get_plugin_data_file
 
-from .hoyospider import (
-    ForumType,
-    HoyoBasicSpider,
-    Rank,
-    RankType,
-    Search,
-    dbycos_good,
-    dbycos_hot,
-    dbycos_latest_comment,
-    dbycos_rank_daily,
-    genshin_hot,
-    genshin_latest_comment,
-    genshin_rank_daily,
-    honkai3rd_good,
-    honkai3rd_hot,
-    honkai3rd_latest_comment,
-    starrail_hot,
-    starrail_latest_comment,
-    zzz_good,
-    zzz_hot,
-    zzz_latest_comment,
-)
-from .utils import (
-    DBY_NAME,
-    GENSHIN_NAME,
-    HONKAI3RD_NAME,
-    IS_FORWARD,
-    MAX,
-    SAVE_PATH,
-    STAR_RAIL,
-    SUPER_PERMISSION,
-    ZZZ_NAME,
-    WriteError,
-    check_cd,
-    download_from_urls,
-    msglist2forward,
-    send_forward_msg,
-    send_regular_msg,
-)
+from .config import config
+from .hoyospider import HoyoClient, MiyousheError, game_name, image_urls
+from .storage import Subscription, Subscriptions
+from .utils import Cooldown, parse_count, parse_time
 
-g_config: dict[str, dict[str, str]] = {
-    "原神": {},
-    "崩坏3": {},
-    "大别野": {},
-    "星穹铁道": {},
-}  # 全局配置
-
-# 读取配置文件
-config_path = Path("config/genshincos.json")
-config_path.parent.mkdir(parents=True, exist_ok=True)
-if config_path.exists():
-    with Path.open(config_path, encoding="utf8") as f:
-        g_config = json.load(f)
-else:
-    with Path.open(config_path, "w", encoding="utf8") as f:
-        json.dump(g_config, f, ensure_ascii=False, indent=4)
-
-# 事件响应器
-download_cos = on_command(
-    "下载cos",
-    aliases={"cos保存", "保存cos"},
-    block=False,
-    priority=5,
-    permission=SUPER_PERMISSION,
+driver = get_driver()
+subscriptions = Subscriptions(get_plugin_data_file("subscriptions.json"))
+save_path = (
+    Path(config.cos_path).expanduser()
+    if config.cos_path
+    else get_plugin_data_dir() / "images"
 )
-hot_cos = on_command(
-    "热门cos", aliases={"热门coser", "热门cos图"}, block=False, priority=5
-)
-rank_cos = on_regex(
-    r"^(日|月|周)榜cos[er]?[图]?(.+)?", priority=5, block=False, flags=re.I
-)
-latest_cos = on_command(
-    "最新cos", aliases={"最新coser", "最新cos图"}, block=False, priority=5
-)
-good_cos = on_command(
-    "精品cos", aliases={"精品coser", "精品cos图"}, block=False, priority=5
-)
-search_cos = on_regex(
-    r"^搜索(原神|崩坏3|星穹铁道|大别野|绝区零)cos[er]?[图]?(.+)?",
-    block=False,
-    priority=5,
-)
-turn_aps = on_regex(
-    r"^(开启|关闭)每日推送(原神|崩坏3|星穹铁道|大别野)(\s)?(.+)?",
-    block=False,
-    priority=5,
-    flags=re.I,
-    permission=SUPER_PERMISSION,
-)
-show_aps = on_command(
-    "查看本群推送",
-    aliases={"查看推送", "查看订阅"},
-    block=False,
-    priority=5,
-    rule=to_me(),
-)
+cooldown = Cooldown(config.cos_cd)
+# Bound expensive work before fetching lists or opening download streams.
+request_lock = asyncio.Semaphore(4)
+download_lock = asyncio.Lock()
+ADMIN = SUPERUSER | GROUP_ADMIN | GROUP_OWNER
 
 
-@search_cos.handle()
-async def _(
-    bot: Bot,
-    matcher: Matcher,
-    event: MessageEvent,
-    args: tuple[str, ...] = RegexGroup(),
-):
-    if not args[1]:
-        await search_cos.finish("请指定搜索内容")
+@lru_cache(maxsize=1)
+def get_client() -> HoyoClient:
+    return HoyoClient(config.cos_timeout)
+
+
+def forward_nodes(bot: Bot, messages: list) -> list[dict]:
+    return [
+        {
+            "type": "node",
+            "data": {"name": "米游社cos", "uin": bot.self_id, "content": message},
+        }
+        for message in messages
+    ]
+
+
+async def send_messages(bot: Bot, event: MessageEvent, messages: list) -> None:
+    if config.cos_forward_msg:
+        target = (
+            {"group_id": event.group_id}
+            if isinstance(event, GroupMessageEvent)
+            else {"user_id": event.user_id}
+        )
+        api = (
+            "send_group_forward_msg"
+            if isinstance(event, GroupMessageEvent)
+            else "send_private_forward_msg"
+        )
+        await bot.call_api(api, **target, messages=forward_nodes(bot, messages))
     else:
-        groups = args[1].split()
-
-    forum_type_map = {
-        "原神": ForumType.GenshinCos,
-        "崩坏3": ForumType.Honkai3rdPic,
-        "大别野": ForumType.DBYCOS,
-        "星穹铁道": ForumType.StarRailCos,
-        "绝区零": ForumType.ZZZ,
-    }
-
-    search_class = forum_type_map.get(args[0])
-    if not search_class:
-        await search_cos.finish("暂不支持该类型")
-
-    search_instance = Search(search_class, groups[0])
-    await send_images(bot, matcher, groups, event, search_instance)
+        for index, message in enumerate(messages):
+            if index:
+                await asyncio.sleep(config.cos_delay)
+            await bot.send(event, message)
 
 
-async def handle_cos_type(arg: str, finish_func, send_func, type_dict: dict):
-    if not arg:
-        await finish_func("请指定cos类型")
-    args = arg.split()
-    send_type = type_dict.get(args[0])
-    if not send_type:
-        await finish_func("暂不支持该类型")
-    await send_func(args, send_type)
-
-
-@hot_cos.handle()
-async def _(
-    bot: Bot,
-    matcher: Matcher,
-    event: MessageEvent,
-    arg: Message = CommandArg(),  # noqa
-):
-    type_dict = {
-        **dict.fromkeys(GENSHIN_NAME, genshin_hot),
-        **dict.fromkeys(HONKAI3RD_NAME, honkai3rd_hot),
-        **dict.fromkeys(DBY_NAME, dbycos_hot),
-        **dict.fromkeys(STAR_RAIL, starrail_hot),
-        **dict.fromkeys(ZZZ_NAME, zzz_hot),
-    }
-    await handle_cos_type(
-        arg.extract_plain_text(),
-        hot_cos.finish,
-        lambda args, send_type: send_images(bot, matcher, args, event, send_type),
-        type_dict,
+def make_command(name: str, args=None, *, aliases=(), permission=None, rule=None):
+    return on_alconna(
+        Alconna(
+            list(dict.fromkeys(["", *driver.config.command_start])),
+            name,
+            args or Args(),
+            meta=CommandMeta(compact=False),
+        ),
+        aliases=set(aliases),
+        use_cmd_start=False,
+        auto_send_output=True,
+        priority=5,
+        block=True,
+        permission=permission,
+        rule=rule,
     )
 
 
-@rank_cos.handle()
-async def _(
-    bot: Bot,
-    matcher: Matcher,
-    event: MessageEvent,
-    group: tuple[str, ...] = RegexGroup(),
-):
-    if not group[1]:
-        await rank_cos.finish("请指定cos类型")
-    rank_type_map = {
-        "日": RankType.Daily,
-        "周": RankType.Weekly,
-        "月": RankType.Monthly,
-    }
-    rank_type = rank_type_map.get(group[0])
-    if rank_type is None:
-        await rank_cos.finish("请指定榜单类型")
-    type_dict = {
-        **dict.fromkeys(GENSHIN_NAME, Rank(ForumType.GenshinCos, rank_type)),
-        **dict.fromkeys(DBY_NAME, Rank(ForumType.DBYCOS, rank_type)),
-    }
-    await handle_cos_type(
-        group[1],
-        rank_cos.finish,
-        lambda args, send_type: send_images(bot, matcher, args, event, send_type),
-        type_dict,
+def register_images(kind: str):
+    matcher = make_command(
+        f"{kind}cos",
+        Args["game", str, ""]["count", str, "x1"],
+        aliases=(f"{kind}coser", f"{kind}cos图"),
+    )
+    matcher.shortcut(
+        rf"(?i:{kind}cos(?:er|图)?)",
+        {"command": f"{kind}cos", "fuzzy": True},
     )
 
+    @matcher.handle()
+    async def handle(bot: Bot, event: MessageEvent, matcher: Matcher, result: Arparma):
+        await query_images(bot, event, matcher, result, kind)
 
-@latest_cos.handle()
-async def _(
+    return matcher
+
+
+async def query_images(
     bot: Bot,
-    matcher: Matcher,
     event: MessageEvent,
-    arg: Message = CommandArg(),  # noqa
-):
-    type_dict = {
-        **dict.fromkeys(GENSHIN_NAME, genshin_latest_comment),
-        **dict.fromkeys(HONKAI3RD_NAME, honkai3rd_latest_comment),
-        **dict.fromkeys(DBY_NAME, dbycos_latest_comment),
-        **dict.fromkeys(STAR_RAIL, starrail_latest_comment),
-        **dict.fromkeys(ZZZ_NAME, zzz_latest_comment),
-    }
-    await handle_cos_type(
-        arg.extract_plain_text(),
-        latest_cos.finish,
-        lambda args, send_type: send_images(bot, matcher, args, event, send_type),
-        type_dict,
-    )
-
-
-@good_cos.handle()
-async def _(
-    bot: Bot,
     matcher: Matcher,
-    event: MessageEvent,
-    arg: Message = CommandArg(),  # noqa
-):
-    if not arg:
-        await good_cos.finish("请指定cos类型")
-    args = arg.extract_plain_text().split()
-    if args[0] in GENSHIN_NAME:
-        await good_cos.finish("原神暂不支持精品cos")
-    elif args[0] in STAR_RAIL:
-        await good_cos.finish("星穹铁道暂不支持精品cos")
-    type_dict = {
-        **dict.fromkeys(HONKAI3RD_NAME, honkai3rd_good),
-        **dict.fromkeys(DBY_NAME, dbycos_good),
-        **dict.fromkeys(ZZZ_NAME, zzz_good),
-    }
-    await handle_cos_type(
-        arg.extract_plain_text(),
-        good_cos.finish,
-        lambda args, send_type: send_images(bot, matcher, args, event, send_type),
-        type_dict,
-    )
-
-
-@show_aps.handle()
-async def _(event: GroupMessageEvent):
-    send_msg = "本群订阅的推送有:\n"
-    for game_type, dict in g_config.items():
-        if game_type:
-            for group_id, time in dict.items():
-                if str(event.group_id) == group_id:
-                    send_msg += f"{game_type}的每日{time}推送\n"
-    await show_aps.finish(send_msg)
-
-
-@turn_aps.handle()
-async def _(event: GroupMessageEvent, args: tuple[str, ...] = RegexGroup()):
-    if scheduler is None:
-        await turn_aps.finish("未安装apscheduler插件,无法使用此功能")
-
-    mode, game_type, time = args[0], args[1], args[3]
-    if game_type not in GENSHIN_NAME + DBY_NAME:
-        await turn_aps.finish("暂不支持其他类型的订阅，仅支持原神和大别野")
-
-    aps_group_id = str(event.group_id)
-    if mode == "开启":
-        if not time:
-            await turn_aps.finish("请指定推送时间")
-        if aps_group_id in g_config.get(game_type, {}):
-            await turn_aps.finish("该群已开启,无需重复开启")
-
-        g_config.setdefault(game_type, {})[aps_group_id] = time
-        try:
-            scheduler.add_job(
-                aps_send,
-                trigger="cron",
-                hour=time.split(":")[0],
-                minute=time.split(":")[1],
-                id=f"{game_type}{aps_group_id}",
-                args=(aps_group_id,),
-            )
-            logger.debug(f"已成功添加{aps_group_id}的{game_type}定时推送")
-        except Exception as e:
-            logger.error(e)
-    else:
-        if aps_group_id not in g_config.get(game_type, {}):
-            await turn_aps.finish("该群已关闭,无需重复关闭")
-
-        g_config[game_type].pop(aps_group_id, None)
-        try:
-            scheduler.remove_job(f"{game_type}{aps_group_id}")
-        except Exception as e:
-            logger.error(e)
-
-    with Path.open(config_path, "w", encoding="utf8") as f:
-        json.dump(g_config, f, ensure_ascii=False, indent=4)
-
-    await turn_aps.finish(f"已成功{mode}{aps_group_id}的{game_type}定时推送")
-
-
-@download_cos.got(
-    "game_type", prompt="你想下载哪种类型的,有原神和大别野,崩坏3,星穹铁道"
-)
-async def got_type(game_type: str = ArgPlainText()):
-    type_dict = {
-        **dict.fromkeys(GENSHIN_NAME, genshin_hot),
-        **dict.fromkeys(DBY_NAME, dbycos_hot),
-        **dict.fromkeys(HONKAI3RD_NAME, honkai3rd_hot),
-        **dict.fromkeys(STAR_RAIL, starrail_hot),
-        **dict.fromkeys(ZZZ_NAME, zzz_hot),
-    }
-    hot = type_dict.get(game_type)
-    if not hot:
-        await download_cos.finish("暂不支持该类型")
-    image_urls = await hot.async_get_urls()
-    if not image_urls:
-        await download_cos.finish(f"没有找到{game_type}的cos图片")
-    else:
-        await download_cos.send(f"正在下载{game_type}的cos图片")
-        try:
-            await download_from_urls(image_urls, SAVE_PATH / f"{game_type}cos")
-            await download_cos.finish(
-                f"已成功保存{len(image_urls)}张{game_type}的cos图片"
-            )
-        except WriteError as e:
-            await download_cos.finish(f"保存部分{game_type}的cos图片失败,原因:{e}")
-
-
-###########################################################################################
-
-
-# 定时任务
-async def aps_send(aps_goup_id: str):
-    logger.debug("正在发送定时推送")
-    bot: Bot = get_bot()  # type:ignore
-    for game_type, dict in g_config.items():
-        if not game_type:
-            continue
-        for saved_group_id, time in dict.items():
-            if not (
-                datetime.now().hour == int(time.split(":")[0])
-                and datetime.now().minute == int(time.split(":")[1])
-            ):
-                continue
-            if saved_group_id != aps_goup_id:
-                continue
-            try:
-                group_id = int(saved_group_id)
-                send_type = {
-                    **{name: genshin_rank_daily for name in GENSHIN_NAME},
-                    **{name: dbycos_rank_daily for name in DBY_NAME},
-                }.get(game_type)
-                if not send_type:
-                    continue
-                image_list = await send_type.async_get_urls(page_size=5)
-                name_list = await send_type.async_get_name(page_size=5)
-                rank_text = "\n".join(
-                    [f"{i + 1}.{name}" for i, name in enumerate(name_list)]
-                )
-                msg_list = [
-                    MessageSegment.text(f"✅米游社{game_type}cos每日榜单✅"),
-                    MessageSegment.text(rank_text),
-                ] + [MessageSegment.image(img) for img in image_list]
-                msg_list = msglist2forward("米游社cos", "2854196306", msg_list)
-                await bot.call_api(
-                    "send_group_forward_msg", group_id=group_id, messages=msg_list
-                )
-                await asyncio.sleep(1)
-            except Exception as e:
-                logger.error(e)
-
-
-g_user_data = {}  # 用户cd数据
-
-
-async def send_images(
-    bot: Bot,
-    matcher: Matcher,
-    args: list,
-    event: MessageEvent,
-    send_type: HoyoBasicSpider,
-):
-    """
-    发送图片
-
-    params:
-        bot: 当前bot
-        matcher: 事件响应器
-        args: 命令参数(0:类型 1:数量)
-        event: 消息事件类型
-        send_type: 爬虫类型
-    """
-    global g_user_data
-    out_cd, deletime, g_user_data = check_cd(event.user_id, g_user_data)
-    if not out_cd:
-        await matcher.finish(f"cd冷却中,还剩{deletime}秒", at_sender=True)
-        return
-
-    num_images = min(int(re.sub(r"[x|*|X]", "", args[1])) if len(args) > 1 else 1, MAX)
-
-    await matcher.send(
-        f"获取{num_images}张图片中…请稍等" if num_images > 1 else "获取图片中…请稍等"
-    )
-
+    result: Arparma,
+    kind: str,
+) -> None:
     try:
-        image_list = await send_type.async_get_urls()
-        if num_images > len(image_list):
-            await matcher.finish(f"最多只能获取{len(image_list)}张图片", at_sender=True)
-            return
-
-        selected_images = (
-            random.sample(image_list, num_images)
-            if num_images > 1
-            else [secrets.choice(image_list)]
-        )
-        msg_list = (
-            [MessageSegment.text(f"✅找到最新的一些{args[0]}图如下:✅")]
-            if num_images > 1
-            else []
-        )
-
-        for img in selected_images:
-            msg_list.append(MessageSegment.image(img))  # noqa
-
-        if IS_FORWARD:
-            await send_forward_msg(bot, event, "米游社cos", bot.self_id, msg_list)
-        else:
-            await send_regular_msg(matcher, msg_list)
+        game = game_name(result.all_matched_args.get("game", ""))
+        count = parse_count(result.all_matched_args.get("count", "x1"), config.cos_max)
+        keyword = result.all_matched_args.get("keyword", "")
+        if kind == "搜索" and not keyword.strip():
+            raise ValueError("请指定搜索内容")  # noqa: TRY301
+        if kind == "精品" and game in {"原神", "星穹铁道"}:
+            raise ValueError(f"{game}暂不支持精品cos")  # noqa: TRY301
+    except ValueError as exc:
+        await matcher.finish(str(exc))
+    remaining = cooldown.acquire(bot.self_id, event.user_id)
+    if remaining:
+        await matcher.finish(f"冷却中，还剩{remaining}秒", at_sender=True)
+    try:
+        async with request_lock:
+            posts = await get_client().fetch(game, kind, keyword)
+            urls = image_urls(posts)
+            if not urls:
+                await matcher.finish("没有找到相关图片")
+            if count > len(urls):
+                await matcher.finish(f"最多只能获取{len(urls)}张图片")
+            selected = random.sample(urls, count)
+            await send_messages(
+                bot, event, [MessageSegment.image(url) for url in selected]
+            )
+    except (httpx.HTTPError, MiyousheError) as exc:
+        logger.warning(f"米游社图片获取失败: {exc}")
+        await matcher.finish("米游社请求失败，请稍后重试")
     except ActionFailed:
-        await matcher.finish("账户风控了,发送不了图片", at_sender=True)
+        await matcher.finish("图片发送失败，请稍后重试或切换合并转发模式")
 
 
-g_driver = get_driver()  # 全局driver
+image_matchers = {
+    kind: register_images(kind)
+    for kind in ("热门", "最新", "精品", "日榜", "周榜", "月榜")
+}
+search = make_command(
+    "搜索cos", Args["game", str]["keyword", str, ""]["count", str, "x1"]
+)
+search.shortcut(
+    r"搜索(原神|崩坏3|星穹铁道|大别野|绝区零)cos(?:er|图)?",
+    {"command": "搜索cos", "args": ["{0}"], "fuzzy": True},
+)
 
 
-@g_driver.on_startup
-async def start_aps():
+@search.handle()
+async def search_images(
+    bot: Bot, event: MessageEvent, matcher: Matcher, result: Arparma
+):
+    await query_images(bot, event, matcher, result, "搜索")
+
+
+download = make_command(
+    "下载cos",
+    Args["game", str, ""],
+    aliases=("cos保存", "保存cos"),
+    permission=ADMIN,
+)
+
+
+@download.handle()
+async def download_images(matcher: Matcher, result: Arparma):
+    game = result.all_matched_args.get("game", "")
+    if game:
+        matcher.set_arg("game", Message(game))
+
+
+@download.got(
+    "game", prompt="你想下载哪种类型：原神、大别野、崩坏3、星穹铁道或绝区零？"
+)
+async def save_images(matcher: Matcher):
     try:
-        if not scheduler:
-            logger.error("未安装apscheduler插件,无法使用此功能")
-        with Path.open(config_path, encoding="utf8") as f:
-            g_config: dict[str, dict[str, str]] = json.load(f)
-        for game_type, _dict in g_config.items():
-            if game_type == "":
-                continue
-            for aps_group_id, time in _dict.items():
-                if time == "":
-                    continue
-                try:
-                    if scheduler:
-                        scheduler.add_job(
-                            aps_send,
-                            trigger="cron",
-                            hour=time.split(":")[0],
-                            minute=time.split(":")[1],
-                            id=f"{game_type}{aps_group_id}",
-                            args=(aps_group_id,),
-                        )
-                    else:
-                        logger.error("未安装apscheduler插件,无法使用此功能")
-                        return
-                    logger.debug(f"已成功添加{aps_group_id}的{game_type}定时推送")
-                except Exception as e:
-                    logger.error(e)
-                    continue
-    except Exception as e:
-        logger.error(e)
+        game = game_name(str(matcher.get_arg("game")))
+    except ValueError as exc:
+        await matcher.finish(str(exc))
+    if download_lock.locked():
+        await matcher.finish("已有下载任务进行中，请稍后重试")
+    try:
+        async with download_lock, request_lock:
+            urls = image_urls(await get_client().fetch(game))
+            if not urls:
+                await matcher.finish("没有找到相关图片")
+            await matcher.send(f"正在保存{len(urls)}张{game}图片")
+            success, failed = await get_client().download(
+                urls, save_path / f"{game}cos"
+            )
+    except (httpx.HTTPError, MiyousheError, OSError) as exc:
+        logger.warning(f"米游社下载失败: {exc}")
+        await matcher.finish("下载失败，请检查网络和存储目录")
+    await matcher.finish(f"保存完成：成功{success}张，失败{failed}张")
+
+
+async def push(row: Subscription) -> None:
+    bots = get_bots()
+    bot = (
+        bots.get(row.bot_id)
+        if row.bot_id
+        else next((b for b in bots.values() if isinstance(b, Bot)), None)
+    )
+    if not isinstance(bot, Bot):
+        logger.warning(f"跳过每日推送：机器人 {row.bot_id or '旧配置未绑定'} 未连接")
+        return
+    try:
+        async with request_lock:
+            posts = await get_client().fetch(row.game, "日榜", page_size=5)
+            urls = image_urls(posts)[: config.cos_max]
+            if not urls:
+                return
+            titles = "\n".join(f"{i}. {post.title}" for i, post in enumerate(posts, 1))
+            messages = [MessageSegment.text(f"米游社{row.game}cos每日榜单\n{titles}")]
+            messages.extend(MessageSegment.image(url) for url in urls)
+            await bot.call_api(
+                "send_group_forward_msg",
+                group_id=row.group_id,
+                messages=forward_nodes(bot, messages),
+            )
+    except (httpx.HTTPError, MiyousheError, ActionFailed) as exc:
+        logger.warning(f"每日推送失败 {row.key}: {exc}")
+
+
+def job_id(row: Subscription) -> str:
+    return f"genshin_cos:{row.key}"
+
+
+def add_job(row: Subscription) -> None:
+    hour, minute = parse_time(row.time)
+    scheduler.add_job(
+        push,
+        "cron",
+        hour=hour,
+        minute=minute,
+        id=job_id(row),
+        args=(row,),
+        replace_existing=True,
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=60,
+    )
+
+
+def register_subscription(enabled: bool):
+    name = "开启" if enabled else "关闭"
+    matcher = make_command(
+        f"{name}每日推送",
+        Args["game", str]["time", str, ""],
+        permission=ADMIN,
+    )
+    matcher.shortcut(
+        f"{name}每日推送",
+        {"command": f"{name}每日推送", "fuzzy": True},
+    )
+
+    @matcher.handle()
+    async def change(bot: Bot, event: GroupMessageEvent, result: Arparma):
+        try:
+            game = game_name(result.all_matched_args["game"])
+            if game not in {"原神", "大别野"}:
+                raise ValueError("每日榜单推送仅支持原神和大别野")  # noqa: TRY301
+            value = result.all_matched_args.get("time", "")
+            hour, minute = parse_time(value) if enabled else (0, 0)
+            row = Subscription(
+                bot.self_id, event.group_id, game, f"{hour:02}:{minute:02}"
+            )
+            removed = await subscriptions.update(row, enabled)
+        except (ValueError, OSError) as exc:
+            await matcher.finish(f"订阅更新失败：{exc}")
+        for old in removed:
+            if scheduler.get_job(job_id(old)):
+                scheduler.remove_job(job_id(old))
+        if enabled:
+            add_job(row)
+        await matcher.finish(
+            f"已{name}{game}每日推送" + (f"（{row.time}）" if enabled else "")
+        )
+
+    return matcher
+
+
+enable_push = register_subscription(True)
+disable_push = register_subscription(False)
+show_push = make_command("查看本群推送", aliases=("查看推送", "查看订阅"), rule=to_me())
+
+
+@show_push.handle()
+async def show_subscriptions(bot: Bot, event: GroupMessageEvent):
+    rows = [
+        f"{row.game}：每天 {row.time}"
+        for row in subscriptions.items.values()
+        if row.group_id == event.group_id and row.bot_id in {"", bot.self_id}
+    ]
+    await show_push.finish(
+        "本群订阅：\n" + "\n".join(rows) if rows else "本群尚未开启推送"
+    )
+
+
+@driver.on_startup
+async def startup():
+    # Do not swallow corrupt subscription files and later overwrite them.
+    await subscriptions.load(Path("config/genshincos.json"))
+    for row in subscriptions.items.values():
+        add_job(row)
+    scheduler.add_job(
+        prune_cooldowns,
+        "interval",
+        seconds=60,
+        id="genshin_cos:cooldown",
+        replace_existing=True,
+        max_instances=1,
+    )
+
+
+async def prune_cooldowns():
+    # Async jobs run on the event loop, alongside cooldown.acquire().
+    cooldown.prune()
+
+
+@driver.on_shutdown
+async def shutdown():
+    for job in scheduler.get_jobs():
+        if job.id.startswith("genshin_cos:"):
+            scheduler.remove_job(job.id)
+    if get_client.cache_info().currsize:
+        await get_client().close()
+        get_client.cache_clear()
