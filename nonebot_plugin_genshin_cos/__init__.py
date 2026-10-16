@@ -17,4 +17,6 @@ __plugin_meta__ = PluginMetadata(
     supported_adapters={"~onebot.v11"},
 )
 
-from . import matcher as matcher
+from . import matcher
+
+__all__ = ["matcher"]

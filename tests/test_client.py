@@ -77,7 +77,10 @@ async def test_api_errors(body):
 
 
 class ChunkStream(httpx.AsyncByteStream):
-    async def __aiter__(self):
+    def __aiter__(self):
+        return self._chunks()
+
+    async def _chunks(self):
         for _ in range(4):
             yield b"a" * 65536
 
@@ -108,8 +111,8 @@ async def test_streaming_download_and_skip(tmp_path):
         await client.close()
 
 
-class BrokenStream(httpx.AsyncByteStream):
-    async def __aiter__(self):
+class BrokenStream(ChunkStream):
+    async def _chunks(self):
         yield b"partial"
         raise httpx.ReadError("connection lost")
 
@@ -127,8 +130,8 @@ async def test_partial_download_removed(tmp_path):
         await client.close()
 
 
-class CancelledStream(httpx.AsyncByteStream):
-    async def __aiter__(self):
+class CancelledStream(ChunkStream):
+    async def _chunks(self):
         yield b"partial"
         raise asyncio.CancelledError
 

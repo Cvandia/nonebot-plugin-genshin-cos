@@ -13,4 +13,5 @@ nonebot.init(
     localstore_cache_dir=str(root / "cache"),
 )
 nonebot.get_driver().register_adapter(Adapter)
-assert nonebot.load_plugin("nonebot_plugin_genshin_cos") is not None
+if nonebot.load_plugin("nonebot_plugin_genshin_cos") is None:
+    raise RuntimeError("Failed to load nonebot_plugin_genshin_cos for tests")
