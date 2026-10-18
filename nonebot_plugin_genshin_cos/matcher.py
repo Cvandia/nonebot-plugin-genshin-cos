@@ -55,7 +55,11 @@ def forward_nodes(bot: Bot, messages: list) -> list[dict]:
     return [
         {
             "type": "node",
-            "data": {"name": "米游社cos", "uin": bot.self_id, "content": message},
+            "data": {
+                "name": "米游社cos",
+                "uin": bot.self_id,
+                "content": Message(message),
+            },
         }
         for message in messages
     ]
