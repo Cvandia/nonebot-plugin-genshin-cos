@@ -143,6 +143,9 @@ async def test_push_fetches_once_and_routes_exact_game(runtime, monkeypatch):
     assert api == "send_group_forward_msg"
     assert arguments["group_id"] == 123
     assert "标题" in str(arguments["messages"])
+    assert all(
+        isinstance(node["data"]["content"], list) for node in arguments["messages"]
+    )
 
 
 async def test_startup_restores_jobs_and_cleans_cooldowns_on_event_loop(

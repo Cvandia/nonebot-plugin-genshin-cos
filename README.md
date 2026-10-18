@@ -113,9 +113,20 @@ uv run ruff check .
 uv run ruff format --check .
 ```
 
-测试使用模拟 HTTP 和 OneBot API，覆盖命令实际分发、权限、冷却、订阅迁移、
-多机器人隔离、接口错误和下载中断。实际米游社接口及 QQ 发图仍需部署后联调。
+测试覆盖命令实际分发、权限、冷却、订阅迁移、多机器人隔离、接口错误和下载中断。
+另在 uv 环境中完成 122 项真实 OneBot V11 WebSocket 黑盒用例、服务重启恢复和实际定时调度验证；
+固定数据测试仅替换米游社 HTTP 边界。Matcha 桌面版另行验证了聊天和下载。
+真实米游社热门、最新、日周月榜和搜索接口已联调，真实 QQ 平台的风控与展示仍需部署验证。
 流式下载降低下载期间的图片缓冲峰值；Alconna 自身也有依赖开销，不代表整个机器人进程常驻内存一定下降。
+
+## 0.4.0 已知限制
+
+- 2026-10-18 联调时，精品图上游 `forumGoodPostFullList` 返回 HTTP 404。
+  插件会提示请求失败；固定数据下的精品命令测试通过不代表线上接口可用。
+- Matcha 0.4.8 未实现发送合并转发扩展 API。合并转发与每日推送需使用支持
+  `send_group_forward_msg` / `send_private_forward_msg` 的 OneBot 实现。
+
+版本变更与发布校验方式见 [CHANGELOG.md](https://github.com/Cvandia/nonebot-plugin-genshin-cos/blob/main/CHANGELOG.md)。
 
 图片版权归原作者所有，请尊重 coser 的创作权。
 
