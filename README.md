@@ -1,12 +1,43 @@
+<div align="center">
+
 # nonebot-plugin-genshin-cos
+
+<a href="https://github.com/Cvandia/nonebot-plugin-genshin-cos">
+  <img src="https://count.getloli.com/get/@nonebot-plugin-genshin-cos?theme=booru-lewd" alt="访问统计" />
+</a>
+
+_⭐ 基于 NoneBot2 获取米游社社区 cos 照片的插件项目 ⭐_
+
+<a href="https://www.python.org/downloads/">
+  <img src="https://img.shields.io/badge/python-3.10+-blue" alt="Python 3.10+" />
+</a>
+<a href="https://github.com/nonebot/nonebot2">
+  <img src="https://img.shields.io/badge/NoneBot2-2.4+-red" alt="NoneBot2 2.4+" />
+</a>
+<a href="https://github.com/nonebot/adapter-onebot">
+  <img src="https://img.shields.io/badge/adapter-OneBot_V11-green" alt="OneBot V11" />
+</a>
+<a href="https://github.com/Cvandia/nonebot-plugin-genshin-cos/blob/main/LICENSE">
+  <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License" />
+</a>
+
+**中文简体**
+
+</div>
+
+---
 
 基于 NoneBot2 的米游社图片插件，支持原神、崩坏3、星穹铁道、大别野和绝区零。
 命令由 [Alconna](https://github.com/nonebot/plugin-alconna) 解析，
 数据由 [LocalStore](https://github.com/nonebot/plugin-localstore) 管理，消息使用 OneBot V11。
 
-## 安装
+## 使用
 
-需要 Python 3.10+、NoneBot2 2.4+ 和 OneBot V11 适配器。依赖解析器可能按 Alconna 版本安装更新的 NoneBot2。
+1. 需要 **Python 3.10+、NoneBot2 2.4+ 和 OneBot V11 适配器**。依赖解析器可能按 Alconna 版本安装更新的 NoneBot2。
+2. 在机器人项目中安装并启用插件，配置在机器人 `.env` 中按需设置。
+3. 完整更新记录见 [更新日志](CHANGELOG.md)。
+
+### 安装
 
 ```bash
 nb plugin install nonebot-plugin-genshin-cos
@@ -27,7 +58,7 @@ plugins = ["nonebot_plugin_genshin_cos"]
 
 Alconna、LocalStore 和 APScheduler 会自动加载，不需要额外填写到插件列表。
 
-## 使用
+### 指令
 
 命令不需要前缀，也兼容机器人配置的命令前缀，例如 `/热门cos 原神 x3`。
 原有的 `coser`、`cos图` 后缀及游戏别名继续可用。
@@ -52,18 +83,18 @@ Alconna、LocalStore 和 APScheduler 会自动加载，不需要额外填写到�
 每日推送使用合并转发，图片数量也受 `cos_max` 限制。
 新订阅绑定当前机器人，机器人断线时跳过推送；重新开启同一订阅可更新时间。
 
-## 配置
+### 配置
 
 在机器人 `.env` 中按需设置：
 
 | 配置项 | 类型 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| cos_max | int | 10 | 每次最多发送的图片数，范围 1–100 |
-| cos_path | str | 空字符串 | 图片保存目录；为空时使用 LocalStore 插件数据目录下的 images |
-| cos_cd | int | 10 | 每个机器人下每位用户的请求冷却秒数，0 表示关闭 |
-| cos_forward_msg | bool | false | 普通查图是否使用合并转发 |
-| cos_delay | float | 0.5 | 普通逐张发送的间隔秒数 |
-| cos_timeout | float | 20 | HTTP 请求超时秒数，必须大于 0 |
+| `cos_max` | int | `10` | 每次最多发送的图片数，范围 1–100 |
+| `cos_path` | str | 空字符串 | 图片保存目录；为空时使用 LocalStore 插件数据目录下的 images |
+| `cos_cd` | int | 10 | 每个机器人下每位用户的请求冷却秒数，0 表示关闭 |
+| `cos_forward_msg` | bool | `false` | 普通查图是否使用合并转发 |
+| `cos_delay` | float | `0.5` | 普通逐张发送的间隔秒数 |
+| `cos_timeout` | float | `20` | HTTP 请求超时秒数，必须大于 0 |
 
 指定 `cos_path` 时，相对路径以机器人运行目录为基准，绝对路径直接使用。
 也可以通过 LocalStore 配置统一修改数据根目录：
@@ -82,7 +113,7 @@ COS_TIMEOUT=20
 [LocalStore 文档](https://github.com/nonebot/plugin-localstore#配置项)，
 可通过 `nb localstore` 查看目录。
 
-## 从旧版迁移
+### 从旧版升级
 
 - Python 最低版本由 3.9 调整为 3.10。
 - 首次启动若 LocalStore 中没有 `subscriptions.json`，会读取旧的
@@ -94,7 +125,7 @@ COS_TIMEOUT=20
 - 图片按 URL 的 SHA-256 命名，避免查询参数及同名 URL 冲突；已保存文件会跳过。
 - 移除了未在插件内使用的同步爬虫接口和全局爬虫实例。直接导入旧爬虫类的外部脚本需要改用 `HoyoClient`。
 
-## 实现与验证
+### 开发验证
 
 - 一个按需创建、关机关闭的 HTTP 客户端复用连接池。
 - 同一榜单一次请求同时获取标题和图片，不重复调用接口。
@@ -119,17 +150,30 @@ uv run ruff format --check .
 真实米游社热门、最新、日周月榜和搜索接口已联调，真实 QQ 平台的风控与展示仍需部署验证。
 流式下载降低下载期间的图片缓冲峰值；Alconna 自身也有依赖开销，不代表整个机器人进程常驻内存一定下降。
 
-## 0.4.0 已知限制
+### 0.4.0 已知限制
 
 - 2026-10-18 联调时，精品图上游 `forumGoodPostFullList` 返回 HTTP 404。
   插件会提示请求失败；固定数据下的精品命令测试通过不代表线上接口可用。
 - Matcha 0.4.8 未实现发送合并转发扩展 API。合并转发与每日推送需使用支持
   `send_group_forward_msg` / `send_private_forward_msg` 的 OneBot 实现。
 
-版本变更与发布校验方式见 [CHANGELOG.md](https://github.com/Cvandia/nonebot-plugin-genshin-cos/blob/main/CHANGELOG.md)。
-
 图片版权归原作者所有，请尊重 coser 的创作权。
 
-## License
+## 💝 特别鸣谢
 
-[MIT](LICENSE)
+- [x] [NoneBot2](https://github.com/nonebot/nonebot2)：本项目使用的机器人框架。
+- [x] [Alconna](https://github.com/nonebot/plugin-alconna)：提供命令解析支持。
+- [x] [LocalStore](https://github.com/nonebot/plugin-localstore)：提供插件数据目录管理。
+- [x] [APScheduler 插件](https://github.com/nonebot/plugin-apscheduler)：提供每日推送调度支持。
+
+### 感谢以下开发者
+
+<a href="https://github.com/Cvandia/nonebot-plugin-genshin-cos/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=Cvandia/nonebot-plugin-genshin-cos&max=100" alt="contributors" />
+</a>
+
+## 支持
+
+[帮助文档](https://nonebot.dev/) · [问题反馈](https://github.com/Cvandia/nonebot-plugin-genshin-cos/issues) · [更新日志](CHANGELOG.md)
+
+MIT，见 [LICENSE](LICENSE)。
