@@ -37,7 +37,7 @@ _⭐ 基于 NoneBot2 获取米游社社区 cos 照片的插件项目 ⭐_
 2. 在机器人项目中安装并启用插件，配置在机器人 `.env` 中按需设置。
 3. 完整更新记录见 [更新日志](CHANGELOG.md)。
 
-### 安装
+### 📦 安装
 
 ```bash
 nb plugin install nonebot-plugin-genshin-cos
@@ -58,7 +58,7 @@ plugins = ["nonebot_plugin_genshin_cos"]
 
 Alconna、LocalStore 和 APScheduler 会自动加载，不需要额外填写到插件列表。
 
-### 指令
+### 🎮 指令
 
 命令不需要前缀，也兼容机器人配置的命令前缀，例如 `/热门cos 原神 x3`。
 原有的 `coser`、`cos图` 后缀及游戏别名继续可用。
@@ -83,7 +83,7 @@ Alconna、LocalStore 和 APScheduler 会自动加载，不需要额外填写到�
 每日推送使用合并转发，图片数量也受 `cos_max` 限制。
 新订阅绑定当前机器人，机器人断线时跳过推送；重新开启同一订阅可更新时间。
 
-### 配置
+### ⚙️ 配置
 
 在机器人 `.env` 中按需设置：
 
@@ -113,7 +113,7 @@ COS_TIMEOUT=20
 [LocalStore 文档](https://github.com/nonebot/plugin-localstore#配置项)，
 可通过 `nb localstore` 查看目录。
 
-### 从旧版升级
+### ⬆️ 从旧版升级
 
 - Python 最低版本由 3.9 调整为 3.10。
 - 首次启动若 LocalStore 中没有 `subscriptions.json`，会读取旧的
@@ -125,7 +125,7 @@ COS_TIMEOUT=20
 - 图片按 URL 的 SHA-256 命名，避免查询参数及同名 URL 冲突；已保存文件会跳过。
 - 移除了未在插件内使用的同步爬虫接口和全局爬虫实例。直接导入旧爬虫类的外部脚本需要改用 `HoyoClient`。
 
-### 开发验证
+### 🧪 开发验证
 
 - 一个按需创建、关机关闭的 HTTP 客户端复用连接池。
 - 同一榜单一次请求同时获取标题和图片，不重复调用接口。
@@ -150,7 +150,7 @@ uv run ruff format --check .
 真实米游社热门、最新、日周月榜和搜索接口已联调，真实 QQ 平台的风控与展示仍需部署验证。
 流式下载降低下载期间的图片缓冲峰值；Alconna 自身也有依赖开销，不代表整个机器人进程常驻内存一定下降。
 
-### 0.4.0 已知限制
+### ⚠️ 0.4.0 已知限制
 
 - 2026-10-18 联调时，精品图上游 `forumGoodPostFullList` 返回 HTTP 404。
   插件会提示请求失败；固定数据下的精品命令测试通过不代表线上接口可用。
@@ -166,7 +166,7 @@ uv run ruff format --check .
 - [x] [LocalStore](https://github.com/nonebot/plugin-localstore)：提供插件数据目录管理。
 - [x] [APScheduler 插件](https://github.com/nonebot/plugin-apscheduler)：提供每日推送调度支持。
 
-### 感谢以下开发者
+### 👥 感谢以下开发者
 
 <a href="https://github.com/Cvandia/nonebot-plugin-genshin-cos/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=Cvandia/nonebot-plugin-genshin-cos&max=100" alt="contributors" />
