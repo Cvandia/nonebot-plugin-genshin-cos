@@ -1,6 +1,6 @@
 <div align="center">
 
-# nonebot-plugin-genshin-cos
+# 📸 nonebot-plugin-genshin-cos
 
 <a href="https://github.com/Cvandia/nonebot-plugin-genshin-cos">
   <img src="https://count.getloli.com/get/@nonebot-plugin-genshin-cos?theme=booru-lewd" alt="访问统计" />
@@ -31,7 +31,7 @@ _⭐ 基于 NoneBot2 获取米游社社区 cos 照片的插件项目 ⭐_
 命令由 [Alconna](https://github.com/nonebot/plugin-alconna) 解析，
 数据由 [LocalStore](https://github.com/nonebot/plugin-localstore) 管理，消息使用 OneBot V11。
 
-## 使用
+## 📖 使用
 
 1. 需要 **Python 3.10+、NoneBot2 2.4+ 和 OneBot V11 适配器**。依赖解析器可能按 Alconna 版本安装更新的 NoneBot2。
 2. 在机器人项目中安装并启用插件，配置在机器人 `.env` 中按需设置。
@@ -172,7 +172,7 @@ uv run ruff format --check .
   <img src="https://contrib.rocks/image?repo=Cvandia/nonebot-plugin-genshin-cos&max=100" alt="contributors" />
 </a>
 
-## 支持
+## 🛠️ 支持
 
 [帮助文档](https://nonebot.dev/) · [问题反馈](https://github.com/Cvandia/nonebot-plugin-genshin-cos/issues) · [更新日志](CHANGELOG.md)
 
